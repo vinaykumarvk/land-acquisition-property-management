@@ -206,6 +206,7 @@ export class CrossDocumentQueryService {
     answer?: string;
     error?: string;
     documentCount?: number;
+    responseId?: string;
   }> {
     try {
       console.log('=== CROSS-DOCUMENT QUERY DEBUG ===');
@@ -427,7 +428,8 @@ Important instructions:
       return {
         success: true,
         answer: answer,
-        documentCount: readyDocuments.length
+        documentCount: readyDocuments.length,
+        responseId: metadata.openaiResponseId
       };
 
     } catch (error) {

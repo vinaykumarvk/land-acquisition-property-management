@@ -77,8 +77,8 @@ export class LandNotificationService {
   async updateNotification(
     notificationId: number,
     notificationData: Partial<InsertLandNotification>,
-    parcelIds?: number[],
-    userId: number
+    userId: number,
+    parcelIds?: number[]
   ): Promise<any> {
     try {
       const existing = await storage.getLandNotification(notificationId);
@@ -213,7 +213,7 @@ export class LandNotificationService {
         status: 'approved',
         approvedBy: approverId,
         approvedAt: new Date(),
-      });
+      } as Partial<InsertLandNotification>);
 
       // Notify creator
       await userNotificationService.createNotification({
@@ -287,7 +287,7 @@ export class LandNotificationService {
       const updated = await storage.updateLandNotification(notificationId, {
         status: 'published',
         publishDate,
-      });
+      } as Partial<InsertLandNotification>);
 
       // If Sec 11, open objection window
       if (existing.type === 'sec11') {
@@ -331,7 +331,7 @@ export class LandNotificationService {
   /**
    * Preview notification PDF without changing status
    */
-  async previewNotification(notificationId: number, publishDate: Date): Promise<{ pdfPath: string; hash: string; qrCode?: string }> {
+  async previewNotification(notificationId: number, publishDate: Date): Promise<{ filePath: string; hash: string; qrCode?: string }> {
     const notification = await storage.getLandNotification(notificationId);
     if (!notification) {
       throw new Error('Notification not found');

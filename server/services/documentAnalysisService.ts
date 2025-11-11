@@ -109,7 +109,7 @@ export class DocumentAnalysisService {
         extractedText: analysis.extractedText,
         keyInformation: JSON.stringify(analysis.keyInformation),
         riskLevel: analysis.riskAssessment.level,
-        confidence: analysis.confidence,
+        confidence: String(analysis.confidence),
         analyzedAt: new Date()
       });
 
@@ -259,7 +259,8 @@ export class DocumentAnalysisService {
       }]
     });
 
-    return response.content[0].text;
+    const firstBlock = response.content[0];
+    return firstBlock.type === 'text' ? firstBlock.text : '';
   }
 
   private async summarizeLongDocument(content: string): Promise<string> {
@@ -426,7 +427,9 @@ export class DocumentAnalysisService {
             }]
           });
           
-          extractedText += `\n\n--- Page ${i + 1} ---\n${response.content[0].text}`;
+          const pageBlock = response.content[0];
+          const pageText = pageBlock.type === 'text' ? pageBlock.text : '';
+          extractedText += `\n\n--- Page ${i + 1} ---\n${pageText}`;
           
           // Clean up temp image file
           try {
@@ -534,7 +537,9 @@ To properly analyze this document, please ensure it contains readable text conte
 
     try {
       // Clean the response to remove markdown formatting
-      let cleanedResponse = response.content[0].text;
+      // Handle different block types (text, tool_use, etc.)
+      const firstBlock = response.content[0];
+      let cleanedResponse = firstBlock.type === 'text' ? firstBlock.text : '';
       
       console.log('Raw Claude response:', cleanedResponse);
       
@@ -570,7 +575,9 @@ To properly analyze this document, please ensure it contains readable text conte
       };
     } catch (error) {
       console.error('Failed to parse analysis result:', error);
-      console.error('Raw response:', response.content[0].text);
+      const firstBlock = response.content[0];
+      const rawText = firstBlock.type === 'text' ? firstBlock.text : JSON.stringify(firstBlock);
+      console.error('Raw response:', rawText);
       throw new Error('Failed to parse document analysis result');
     }
   }
@@ -603,7 +610,8 @@ To properly analyze this document, please ensure it contains readable text conte
 
     try {
       // Clean the response to remove markdown formatting
-      let cleanedResponse = response.content[0].text;
+      const firstBlock = response.content[0];
+      let cleanedResponse = firstBlock.type === 'text' ? firstBlock.text : '';
       
       // Remove code block markers
       cleanedResponse = cleanedResponse.replace(/```json\n?/g, '');
@@ -623,7 +631,9 @@ To properly analyze this document, please ensure it contains readable text conte
       };
     } catch (error) {
       console.error('Failed to parse classification result:', error);
-      console.error('Raw response:', response.content[0].text);
+      const firstBlock = response.content[0];
+      const rawText = firstBlock.type === 'text' ? firstBlock.text : JSON.stringify(firstBlock);
+      console.error('Raw response:', rawText);
       return {
         type: 'other',
         subtype: 'unknown',
@@ -670,7 +680,7 @@ To properly analyze this document, please ensure it contains readable text conte
 
     for (const doc of analyzedDocs) {
       try {
-        const analysis: DocumentAnalysis = JSON.parse(doc.analysisResult);
+        const analysis: DocumentAnalysis = JSON.parse(doc.analysisResult || '{}');
         
         // Count document types
         documentTypes[analysis.documentType] = (documentTypes[analysis.documentType] || 0) + 1;
@@ -703,7 +713,7 @@ To properly analyze this document, please ensure it contains readable text conte
       documentTypes,
       overallRiskLevel,
       keyFindings: keyFindings.slice(0, 10), // Limit to top 10
-      recommendations: [...new Set(recommendations)].slice(0, 10) // Unique recommendations, limit to 10
+      recommendations: Array.from(new Set(recommendations)).slice(0, 10) // Unique recommendations, limit to 10
     };
   }
 }

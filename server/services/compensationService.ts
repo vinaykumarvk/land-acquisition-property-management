@@ -55,8 +55,9 @@ export class CompensationService {
       // Create valuation with area from parcel and created_by
       const valuation = await storage.createValuation({
         ...valuationData,
-        areaSqM: parcel.areaSqM ? Number(parcel.areaSqM) : 0,
-        computedAmount,
+        areaSqM: parcel.areaSqM ? Number(parcel.areaSqM).toFixed(2) : '0.00',
+        circleRate: valuationData.circleRate ? String(valuationData.circleRate) : valuationData.circleRate,
+        computedAmount: computedAmount.toFixed(2),
         createdBy: userId,
       });
 
@@ -123,7 +124,7 @@ export class CompensationService {
           await storage.createParcelOwner({
             parcelId: awardData.parcelId,
             ownerId: awardData.ownerId,
-            sharePct: 100,
+            sharePct: '100.00',
           });
           parcelOwners = await storage.getParcelOwners(awardData.parcelId);
           ownerShare = parcelOwners.find(po => po.ownerId === awardData.ownerId);
@@ -138,7 +139,7 @@ export class CompensationService {
             await storage.createParcelOwner({
               parcelId: awardData.parcelId,
               ownerId: awardData.ownerId,
-              sharePct: remainingShare,
+              sharePct: remainingShare.toFixed(2),
             });
             parcelOwners = await storage.getParcelOwners(awardData.parcelId);
             ownerShare = parcelOwners.find(po => po.ownerId === awardData.ownerId);
@@ -155,6 +156,9 @@ export class CompensationService {
       }
 
       // Calculate owner's share of compensation
+      if (!ownerShare) {
+        throw new Error('Owner share not found for this parcel');
+      }
       const ownerAmount = (Number(valuation.computedAmount) * Number(ownerShare.sharePct)) / 100;
 
       // Generate LOI and Award numbers
@@ -166,25 +170,19 @@ export class CompensationService {
         ...awardData,
         awardNo,
         loiNo,
-        amount: ownerAmount,
+        amount: ownerAmount.toFixed(2),
         status: 'draft',
         createdBy: userId,
       });
 
       // Generate LOI PDF
+      // Note: generateLoiPdf only accepts bankDetails as optional 6th param, not mode/breakdown
       const { filePath: loiPath, hash: loiHash } = await pdfService.generateLoiPdf(
         award.id,
         loiNo,
         owner.name,
         parcel.parcelNo,
-        ownerAmount,
-        awardData.mode as 'cash' | 'pooling' | 'hybrid',
-        {
-          circleRate: Number(valuation.circleRate),
-          area: Number(parcel.areaSqM),
-          sharePct: Number(ownerShare.sharePct),
-          multipliers: valuation.factorMultipliersJson as any,
-        }
+        ownerAmount
       );
 
       // Update award with LOI path
@@ -299,7 +297,7 @@ export class CompensationService {
       // Generate Award PDF
       const { filePath: awardPath, hash: awardHash } = await pdfService.generateAwardPdf(
         awardId,
-        award.awardNo,
+        award.awardNo || '',
         owner?.name || 'Unknown',
         parcel?.parcelNo || 'Unknown',
         Number(award.amount),
@@ -318,7 +316,7 @@ export class CompensationService {
         awardPdfPath: awardPath,
         awardDate: new Date(),
         approvedBy: approverId,
-      });
+      } as Partial<InsertAward>);
 
       // Notify case officer
       await notificationService.createNotification({
@@ -385,16 +383,18 @@ export class CompensationService {
       // Create payment
       const payment = await storage.createPayment({
         ...paymentData,
+        amount: paymentData.amount ? String(paymentData.amount) : paymentData.amount,
         status: 'initiated',
       });
 
       // Generate payment receipt PDF
       const { filePath: receiptPath, hash: receiptHash } = await pdfService.generatePaymentReceipt(
         payment.id,
-        payment.referenceNo || '',
         award.awardNo,
+        owner?.name || 'Unknown',
         Number(payment.amount),
         payment.mode as 'neft' | 'upi' | 'pfms',
+        payment.referenceNo || '',
         new Date()
       );
 
@@ -404,11 +404,13 @@ export class CompensationService {
       });
 
       // If payment is successful, update award status
-      if (paymentData.status === 'success') {
+      // Note: paymentData doesn't have status since it's Omit<InsertPayment, 'status'>
+      // Status is set to 'initiated' when creating payment, check payment.status instead
+      if (payment.status === 'success') {
         await storage.updatePayment(payment.id, {
           status: 'success',
           paidOn: new Date(),
-        });
+        } as Partial<InsertPayment>);
 
         // Check if all payments for this award are complete
         const allPayments = await storage.getPaymentsByAward(paymentData.awardId);

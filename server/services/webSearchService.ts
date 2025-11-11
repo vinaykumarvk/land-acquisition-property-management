@@ -98,6 +98,7 @@ export class WebSearchService {
     success: boolean;
     answer?: string;
     error?: string;
+    responseId?: string;
   }> {
     try {
       // Create a comprehensive web search query

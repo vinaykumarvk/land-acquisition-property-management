@@ -32,8 +32,12 @@ describeIfDb('SchemeService', () => {
 
   beforeEach(async () => {
     // Use unique username for each test to avoid conflicts
+    // Add timestamp and random component for better uniqueness
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
     testUserId = await createTestUser({
       role: 'admin',
+      username: `testuser_${timestamp}_${random}`,
     });
   });
 
@@ -49,7 +53,11 @@ describeIfDb('SchemeService', () => {
       testSchemeIds = [];
     }
     // Then cleanup user
-    await cleanupTestData([testUserId]);
+    if (testUserId) {
+      await cleanupTestData([testUserId]).catch(() => {
+        // Ignore cleanup errors - may already be cleaned up
+      });
+    }
   });
 
   describe('createScheme', () => {

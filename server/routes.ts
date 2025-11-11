@@ -1023,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         documentId: parseInt(documentId),
         userId: req.userId!,
         query,
-        response: result.answer
+        response: result.answer || ''
       });
       
       res.json({
@@ -1098,6 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         answer: result.answer,
         documentCount: result.documentCount,
+        responseId: result.responseId,
         success: true
       });
       
@@ -1144,6 +1145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         answer: result.answer,
         documentCount: result.documentCount,
+        responseId: result.responseId,
         success: true
       });
       
@@ -1208,7 +1210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         answer: result.answer,
-        responseId: result.responseId,
+        responseId: result.responseId || undefined,
         success: true
       });
       
@@ -1242,7 +1244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response: query.response,
         searchType: 'web' as const,
         createdAt: query.createdAt,
-        user: query.user
+        // user property doesn't exist in the query result
       }));
       
       res.json(transformedQueries);
@@ -1802,7 +1804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Web search successful');
       res.json({
         answer: result.answer,
-        responseId: result.responseId,
+        responseId: result.responseId || undefined,
         success: true
       });
       
@@ -1822,8 +1824,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const template = await storage.createTemplate({
         ...templateData,
         createdBy: req.userId!,
-        createdAt: new Date(),
-        updatedAt: new Date()
       });
       res.json(template);
     } catch (error) {
@@ -1836,10 +1836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updateData = insertTemplateSchema.partial().parse(req.body);
-      const template = await storage.updateTemplate(id, {
-        ...updateData,
-        updatedAt: new Date()
-      });
+      const template = await storage.updateTemplate(id, updateData);
       res.json(template);
     } catch (error) {
       console.error('Error updating template:', error);
@@ -2364,8 +2361,8 @@ Note: This is an AI-generated analysis based on the selected template structure.
       const notification = await landNotificationService.updateNotification(
         parseInt(req.params.id),
         notificationData,
-        parcelIds,
-        req.userId!
+        req.userId!,
+        parcelIds
       );
       res.json(notification);
     } catch (error) {
@@ -2568,7 +2565,7 @@ Note: This is an AI-generated analysis based on the selected template structure.
       const parcelOwner = await storage.createParcelOwner({
         parcelId,
         ownerId,
-        sharePct: Number(sharePct),
+        sharePct: String(sharePct),
       });
       res.json(parcelOwner);
     } catch (error) {

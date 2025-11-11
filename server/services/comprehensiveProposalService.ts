@@ -117,7 +117,7 @@ STATUS: ${doc.analysisStatus}
       .map(q => `
 Q: ${q.query}
 A: ${q.response}
-DATE: ${q.createdAt.toISOString().split('T')[0]}
+DATE: ${(q.createdAt || new Date()).toISOString().split('T')[0]}
 ---`).join('\n');
 
     // Build web search insights
@@ -125,7 +125,7 @@ DATE: ${q.createdAt.toISOString().split('T')[0]}
       .map(w => `
 QUERY: ${w.query}
 FINDINGS: ${w.response}
-DATE: ${w.createdAt.toISOString().split('T')[0]}
+DATE: ${(w.createdAt || new Date()).toISOString().split('T')[0]}
 ---`).join('\n');
 
     return `
