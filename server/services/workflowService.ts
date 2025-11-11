@@ -1,7 +1,9 @@
 import { storage } from "../storage";
 import { notificationService } from "./notificationService";
+import { LAMS_ROLES } from "@shared/roles";
 
 export class WorkflowService {
+  // Legacy Investment Portal workflows
   private approvalWorkflows = {
     investment: [
       { stage: 0, approverRole: 'admin', slaHours: 24 }, // Admin review for "opportunity" status
@@ -13,6 +15,62 @@ export class WorkflowService {
       { stage: 1, approverRole: 'manager', slaHours: 24 },
       { stage: 2, approverRole: 'finance', slaHours: 12 },
     ],
+  };
+
+  // LAMS (Land Acquisition Management System) workflows
+  private lamsWorkflows = {
+    // SIA workflow: Draft → Published → HearingScheduled → HearingCompleted → ReportGenerated → Closed
+    sia: {
+      states: ['draft', 'published', 'hearing_scheduled', 'hearing_completed', 'report_generated', 'closed'],
+      transitions: {
+        draft: ['published'],
+        published: ['hearing_scheduled'],
+        hearing_scheduled: ['hearing_completed'],
+        hearing_completed: ['report_generated'],
+        report_generated: ['closed'],
+      },
+    },
+    // Notification workflow: Draft → LegalReview → Approved → Published(§11) → ObjectionWindowOpen → ObjectionResolved → Published(§19) → Closed
+    land_notification: {
+      states: ['draft', 'legal_review', 'approved', 'published', 'objection_window_open', 'objection_resolved', 'closed'],
+      transitions: {
+        draft: ['legal_review'],
+        legal_review: ['approved', 'draft'], // Can be sent back to draft
+        approved: ['published'],
+        published: ['objection_window_open'], // For Sec 11
+        objection_window_open: ['objection_resolved'],
+        objection_resolved: ['published'], // Publish Sec 19
+        published: ['closed'], // After Sec 19 published
+      },
+      approverRoles: {
+        legal_review: LAMS_ROLES.LEGAL_OFFICER,
+        approved: LAMS_ROLES.LEGAL_OFFICER,
+      },
+    },
+    // Award workflow: EligibilityCheck → ValuationReady → DraftAward → FinanceReview → AwardIssued → PaymentInitiated → Paid → Closed
+    award: {
+      states: ['draft', 'fin_review', 'issued', 'paid', 'closed'],
+      transitions: {
+        draft: ['fin_review'],
+        fin_review: ['issued', 'draft'], // Can be sent back
+        issued: ['paid'],
+        paid: ['closed'],
+      },
+      approverRoles: {
+        fin_review: LAMS_ROLES.FINANCE_OFFICER,
+      },
+    },
+    // Possession workflow: Scheduled → InProgress → EvidenceCaptured → CertificateIssued → RegistryUpdated → Closed
+    possession: {
+      states: ['scheduled', 'in_progress', 'evidence_captured', 'certificate_issued', 'registry_updated', 'closed'],
+      transitions: {
+        scheduled: ['in_progress'],
+        in_progress: ['evidence_captured'],
+        evidence_captured: ['certificate_issued'],
+        certificate_issued: ['registry_updated'],
+        registry_updated: ['closed'],
+      },
+    },
   };
 
   async startApprovalWorkflow(requestType: 'investment' | 'cash_request', requestId: number) {
@@ -384,6 +442,140 @@ export class WorkflowService {
     });
 
     console.log(`Created changes requested task for ${requestType} request ${requestId} assigned to user ${request.requesterId}`);
+  }
+
+  // ============================================================================
+  // LAMS Workflow Methods
+  // ============================================================================
+
+  /**
+   * Transition SIA to next state
+   */
+  async transitionSiaState(siaId: number, newState: string, userId: number): Promise<void> {
+    const workflow = this.lamsWorkflows.sia;
+    
+    // Get current SIA
+    const sia = await storage.getSia(siaId);
+    if (!sia) {
+      throw new Error('SIA not found');
+    }
+    
+    // Validate transition
+    const currentState = sia.status;
+    const validTransitions = workflow.transitions[currentState as keyof typeof workflow.transitions];
+    
+    if (!validTransitions || !validTransitions.includes(newState)) {
+      throw new Error(`Invalid transition from ${currentState} to ${newState}`);
+    }
+
+    // Update SIA status (will be done by the calling service)
+    // await storage.updateSia(siaId, { status: newState });
+
+    // Create tasks if needed
+    if (newState === 'hearing_scheduled') {
+      // Create task for case officer to conduct hearing
+      // await this.createSiaHearingTask(siaId);
+    }
+
+    // Log audit trail
+    // await storage.createAuditLog(...);
+  }
+
+  /**
+   * Transition Land Notification to next state
+   */
+  async transitionNotificationState(notificationId: number, newState: string, userId: number, comments?: string): Promise<void> {
+    const workflow = this.lamsWorkflows.land_notification;
+    
+    // Get current notification
+    const notification = await storage.getLandNotification(notificationId);
+    if (!notification) {
+      throw new Error('Notification not found');
+    }
+    
+    // Validate transition
+    const currentState = notification.status;
+    const validTransitions = workflow.transitions[currentState as keyof typeof workflow.transitions];
+    
+    if (!validTransitions || !validTransitions.includes(newState)) {
+      throw new Error(`Invalid transition from ${currentState} to ${newState}`);
+    }
+    
+    // Validate transition and check permissions
+    const approverRole = workflow.approverRoles[newState as keyof typeof workflow.approverRoles];
+    if (approverRole) {
+      // Check if user has required role
+      const user = await storage.getUser(userId);
+      if (user?.role !== approverRole && user?.role !== LAMS_ROLES.ADMIN) {
+        throw new Error(`User does not have permission to transition to ${newState}`);
+      }
+    }
+
+    // Update notification status (will be done by the calling service)
+    // await storage.updateLandNotification(notificationId, { status: newState });
+
+    // If publishing Sec 11, open objection window
+    if (newState === 'published') {
+      // Set objection window deadline (30 days default)
+      // await storage.updateLandNotification(notificationId, { objectionDeadline: ... });
+    }
+
+    // If all objections resolved, can publish Sec 19
+    if (newState === 'objection_resolved') {
+      // Check if all objections are resolved
+      // const unresolved = await storage.getUnresolvedObjections(notificationId);
+      // if (unresolved.length === 0) {
+      //   // Can publish Sec 19
+      // }
+    }
+  }
+
+  /**
+   * Transition Award to next state
+   */
+  async transitionAwardState(awardId: number, newState: string, userId: number): Promise<void> {
+    const workflow = this.lamsWorkflows.award;
+    
+    // Check permissions for finance review
+    if (newState === 'fin_review' || newState === 'issued') {
+      const user = await storage.getUser(userId);
+      if (user?.role !== LAMS_ROLES.FINANCE_OFFICER && user?.role !== LAMS_ROLES.ADMIN) {
+        throw new Error('Only finance officers can approve awards');
+      }
+    }
+
+    // Update award status
+    // await storage.updateAward(awardId, { status: newState });
+
+    // If issued, generate PDFs
+    if (newState === 'issued') {
+      // await pdfService.generateAwardPdf(awardId);
+      // await pdfService.generateLoiPdf(awardId);
+    }
+  }
+
+  /**
+   * Transition Possession to next state
+   */
+  async transitionPossessionState(possessionId: number, newState: string, userId: number): Promise<void> {
+    const workflow = this.lamsWorkflows.possession;
+    
+    // Update possession status
+    // await storage.updatePossession(possessionId, { status: newState });
+
+    // If certificate issued, generate PDF
+    if (newState === 'certificate_issued') {
+      // await pdfService.generatePossessionCertificate(possessionId);
+    }
+  }
+
+  /**
+   * Get valid next states for a workflow
+   */
+  getValidNextStates(workflowType: 'sia' | 'land_notification' | 'award' | 'possession', currentState: string): string[] {
+    const workflow = this.lamsWorkflows[workflowType];
+    const transitions = workflow.transitions[currentState as keyof typeof workflow.transitions];
+    return transitions || [];
   }
 }
 

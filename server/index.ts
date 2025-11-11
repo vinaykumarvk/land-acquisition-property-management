@@ -3,10 +3,13 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { backgroundJobService } from "./services/backgroundJobService";
+import path from "path";
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/pdfs', express.static(path.join(process.cwd(), 'pdfs')));
 
 // Session middleware
 app.use(session({

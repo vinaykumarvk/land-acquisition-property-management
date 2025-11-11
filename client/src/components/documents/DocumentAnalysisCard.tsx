@@ -50,7 +50,7 @@ interface DocumentAnalysis {
   extractedText: string;
 }
 
-interface Document {
+export interface AnalysisDocument {
   id: number;
   fileName: string;
   originalName: string;
@@ -65,7 +65,7 @@ interface Document {
 }
 
 interface DocumentAnalysisCardProps {
-  document: Document;
+  document: AnalysisDocument;
   requestType: string;
   requestId: number;
   hideRiskAssessment?: boolean;
@@ -73,6 +73,29 @@ interface DocumentAnalysisCardProps {
   simplifiedView?: boolean;
   showAnalysisLabel?: boolean;
   showOnlyProcessed?: boolean;
+}
+
+interface DocumentJobStatus {
+  hasJob: boolean;
+  job: {
+    status: string;
+    currentStep?: string;
+    currentStepNumber?: number;
+    totalSteps?: number;
+    stepProgress?: number;
+  };
+}
+
+interface DocumentQueryHistory {
+  id: number;
+  query: string;
+  response: string;
+  createdAt: string;
+  documentCount?: number;
+  user?: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 const DocumentAnalysisCard: React.FC<DocumentAnalysisCardProps> = ({ 
@@ -95,7 +118,7 @@ const DocumentAnalysisCard: React.FC<DocumentAnalysisCardProps> = ({
   const { toast } = useToast();
 
   // Query to check background job status
-  const { data: jobStatus } = useQuery({
+  const { data: jobStatus } = useQuery<DocumentJobStatus | null>({
     queryKey: ['job-status', document.id],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/documents/${document.id}/job-status`);
@@ -105,7 +128,7 @@ const DocumentAnalysisCard: React.FC<DocumentAnalysisCardProps> = ({
   });
 
   // Query for document queries history
-  const { data: queryHistory } = useQuery({
+  const { data: queryHistory = [] } = useQuery<DocumentQueryHistory[]>({
     queryKey: [`/api/documents/${document.id}/queries`],
     enabled: document.analysisStatus === 'completed'
   });
@@ -297,7 +320,7 @@ const DocumentAnalysisCard: React.FC<DocumentAnalysisCardProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getStepDisplayText = (step: string) => {
+  const getStepDisplayText = (step?: string) => {
     switch (step) {
       case 'queued': return 'Queued';
       case 'preparing': return 'Preparing for AI analysis';
@@ -538,9 +561,9 @@ const DocumentAnalysisCard: React.FC<DocumentAnalysisCardProps> = ({
               )}
 
               {/* Query Cards */}
-              {queryHistory && Array.isArray(queryHistory) && queryHistory.length > 0 && (
+              {queryHistory.length > 0 && (
                 <div className="space-y-3">
-                  {queryHistory.map((query: any, index: number) => (
+                  {queryHistory.map((query, index) => (
                     <QueryCard key={query.id} query={query} index={index} />
                   ))}
                 </div>

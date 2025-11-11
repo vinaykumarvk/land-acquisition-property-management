@@ -86,22 +86,69 @@ export function AppLayout({ children }: AppLayoutProps) {
   const unreadNotifications = notifications.filter((n: any) => !n.isRead).length;
 
   // Define all available navigation items with role restrictions
-  const allNavigationItems = [
-    { href: "/", label: "Dashboard", icon: Home, roles: ["all"] },
+  // Separated into LAMS (Land Acquisition) and PMS (Property Management) sections
+  const lamsNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
+    { href: "/lams", label: "LAMS Dashboard", icon: Home, roles: ["all"] },
+    { href: "/lams/sia", label: "SIA Management", icon: Target, roles: ["case_officer", "admin"] },
+    { href: "/lams/notifications", label: "Notifications", icon: Shield, roles: ["case_officer", "legal_officer", "admin"] },
+    { href: "/lams/compensation", label: "Compensation", icon: DollarSign, roles: ["case_officer", "finance_officer", "admin"] },
+    { href: "/lams/possession", label: "Possession", icon: Clock, roles: ["case_officer", "admin"] },
+  ];
+
+  const pmsNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
+    { href: "/pms", label: "PMS Dashboard", icon: Home, roles: ["all"] },
+    { href: "/pms/schemes", label: "Schemes", icon: Target, roles: ["case_officer", "admin"] },
+    { href: "/pms/search", label: "Property Search", icon: Briefcase, roles: ["all"] },
+    { href: "/pms/analytics", label: "Analytics", icon: BarChart3, roles: ["all"] },
+    { href: "/pms/reports", label: "Reports", icon: FileText, roles: ["all"] },
+  ];
+
+  // Legacy/Investment Portal items (for backward compatibility)
+  const legacyNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
+    { href: "/", label: "Dashboard", icon: Home, roles: ["analyst", "manager", "committee_member", "finance", "admin"] },
     { href: "/new-investment", label: "New Investment", icon: PlusCircle, roles: ["analyst", "admin"] },
     { href: "/cash-requests", label: "Cash Requests", icon: DollarSign, roles: ["analyst", "admin"] },
-    { href: "/my-tasks", label: "My Tasks", icon: CheckSquare, badge: taskCount, roles: ["all"] },
-    { href: "/investments", label: "My Investments", icon: Briefcase, roles: ["all"] },
-
+    { href: "/investments", label: "My Investments", icon: Briefcase, roles: ["analyst", "manager", "committee_member", "finance", "admin"] },
     { href: "/templates", label: "Templates", icon: FileText, roles: ["analyst", "admin"] },
   ];
 
+  // Common items
+  const commonNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
+    { href: "/my-tasks", label: "My Tasks", icon: CheckSquare, badge: taskCount, roles: ["all"] },
+    { href: "/reports", label: "Reports", icon: BarChart3, roles: ["all"] },
+  ];
+
+  // Combine all navigation items based on user role
+  const allNavigationItems = [
+    ...lamsNavigationItems,
+    ...pmsNavigationItems,
+    ...legacyNavigationItems,
+    ...commonNavigationItems,
+  ];
+
   // Filter navigation items based on user role
-  const navigationItems = allNavigationItems.filter(item => {
+  const filteredLamsItems = lamsNavigationItems.filter(item => {
     if (item.roles.includes("all")) return true;
     if (!user?.role) return false;
-    const shouldShow = item.roles.includes(user.role);
-    return shouldShow;
+    return item.roles.includes(user.role);
+  });
+
+  const filteredPmsItems = pmsNavigationItems.filter(item => {
+    if (item.roles.includes("all")) return true;
+    if (!user?.role) return false;
+    return item.roles.includes(user.role);
+  });
+
+  const filteredLegacyItems = legacyNavigationItems.filter(item => {
+    if (item.roles.includes("all")) return true;
+    if (!user?.role) return false;
+    return item.roles.includes(user.role);
+  });
+
+  const filteredCommonItems = commonNavigationItems.filter(item => {
+    if (item.roles.includes("all")) return true;
+    if (!user?.role) return false;
+    return item.roles.includes(user.role);
   });
 
 
@@ -162,28 +209,134 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location === item.href;
-          
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={isActive ? "default" : "ghost"}
-                className="w-full justify-start"
-              >
-                <Icon className="mr-3 h-4 w-4" />
-                {item.label}
-                {item.badge && item.badge > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
+        {/* LAMS Module Section */}
+        {filteredLamsItems.length > 0 && (
+          <div className="space-y-2">
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Land Acquisition (LAMS)
+              </p>
+            </div>
+            {filteredLamsItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href || location.startsWith(item.href + "/");
+              
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className="w-full justify-start"
+                  >
+                    <Icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* PMS Module Section */}
+        {filteredPmsItems.length > 0 && (
+          <div className="space-y-2">
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Property Management (PMS)
+              </p>
+            </div>
+            {filteredPmsItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href || location.startsWith(item.href + "/");
+              
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className="w-full justify-start"
+                  >
+                    <Icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Legacy/Investment Portal Section */}
+        {filteredLegacyItems.length > 0 && (
+          <div className="space-y-2">
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Investment Portal
+              </p>
+            </div>
+            {filteredLegacyItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href || location.startsWith(item.href + "/");
+              
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className="w-full justify-start"
+                  >
+                    <Icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Common Items Section */}
+        {filteredCommonItems.length > 0 && (
+          <div className="space-y-2">
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Common
+              </p>
+            </div>
+            {filteredCommonItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href || location.startsWith(item.href + "/");
+              
+              return (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className="w-full justify-start"
+                  >
+                    <Icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        )}
         
         <div className="my-4 border-t" />
         
@@ -300,14 +453,48 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 )}
                 
-                <h2 className="text-2xl font-semibold text-gray-900">
-                  {location === '/' ? 'Dashboard' : 
-                   location === '/new-investment' ? 'New Investment' :
-                   location === '/cash-requests' ? 'Cash Requests' :
-                   location === '/my-tasks' ? 'My Tasks' :
-                   location === '/investments' ? 'My Investments' :
-                   'Investment Portal'}
-                </h2>
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                    {location === '/' ? 'Dashboard' : 
+                     location === '/new-investment' ? 'New Investment' :
+                     location === '/cash-requests' ? 'Cash Requests' :
+                     location === '/my-tasks' ? 'My Tasks' :
+                     location === '/investments' ? 'My Investments' :
+                     location.startsWith('/lams') ? 'LAMS' :
+                     location.startsWith('/pms') ? 'Property Management' :
+                     'Investment Portal'}
+                  </h2>
+                  
+                  {/* Module Tabs - Show when user has access to either module */}
+                  {(filteredLamsItems.length > 0 || filteredPmsItems.length > 0) && (
+                    <div className="hidden md:flex items-center space-x-2 ml-4">
+                      {filteredLamsItems.length > 0 && (
+                        <Link href="/lams">
+                          <Button
+                            variant={location.startsWith('/lams') ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs"
+                          >
+                            <Shield className="mr-2 h-3 w-3" />
+                            LAMS
+                          </Button>
+                        </Link>
+                      )}
+                      {filteredPmsItems.length > 0 && (
+                        <Link href="/pms">
+                          <Button
+                            variant={location.startsWith('/pms') ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs"
+                          >
+                            <Briefcase className="mr-2 h-3 w-3" />
+                            PMS
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex items-center space-x-4">

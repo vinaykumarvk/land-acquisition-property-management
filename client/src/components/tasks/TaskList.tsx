@@ -80,37 +80,40 @@ export function TaskList({ tasks }: TaskListProps) {
 
   return (
     <div className="space-y-3">
-      {displayTasks.map((task) => (
-        <div
-          key={task.id}
-          className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors ${getTaskBgColor(task.status)}`}
-        >
-          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-            {getTaskIcon(task.taskType, task.status)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {task.title}
+      {displayTasks.map((task) => {
+        const taskType = task.taskType ?? 'general';
+        return (
+          <div
+            key={task.id}
+            className={`flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors ${getTaskBgColor(task.status)}`}
+          >
+            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+              {getTaskIcon(taskType, task.status)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {task.title}
+                </p>
+                {task.priority && (
+                  <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+                    {task.priority}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                {task.description}
               </p>
-              {task.priority && (
-                <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
-                  {task.priority}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-              {task.description}
-            </p>
-            <div className="flex items-center text-xs text-gray-500">
-              <Calendar className="h-3 w-3 mr-1" />
-              <span>
-                {task.dueDate ? getTimeLeft(task.dueDate) : 'No due date'}
-              </span>
+              <div className="flex items-center text-xs text-gray-500">
+                <Calendar className="h-3 w-3 mr-1" />
+                <span>
+                  {task.dueDate ? getTimeLeft(task.dueDate) : 'No due date'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       
       {tasks.length > 3 && (
         <div className="pt-4 border-t">

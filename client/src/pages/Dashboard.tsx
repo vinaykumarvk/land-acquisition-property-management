@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Link } from "wouter";
 import { useUser } from "@/lib/auth";
-import { DashboardStats, RecentRequest } from "@/lib/types";
+import { DashboardStats, RecentRequest, TaskItem } from "@/lib/types";
 import { useState, useMemo } from "react";
 import { 
   Clock, 
@@ -50,19 +50,49 @@ interface ProposalFilters {
   amountMax: string;
 }
 
+interface SummaryMetrics {
+  count: number;
+  value: number;
+}
+
+interface EnhancedDashboardStats {
+  proposalSummary: {
+    investment: Record<
+      "draft" | "pendingManager" | "pendingCommittee" | "pendingFinance" | "approved" | "rejected" | "total",
+      SummaryMetrics
+    >;
+    cash: Record<
+      "draft" | "pendingManager" | "pendingCommittee" | "pendingFinance" | "approved" | "rejected" | "total",
+      SummaryMetrics
+    >;
+  };
+  riskProfile: Record<"low" | "medium" | "high", SummaryMetrics>;
+  valueDistribution: Record<"small" | "medium" | "large" | "extraLarge", SummaryMetrics>;
+  decisionSupport: {
+    urgentApprovals: number;
+    overdueItems: number;
+    avgProcessingTime: number;
+    complianceAlerts: number;
+  };
+}
+
 export default function Dashboard() {
   const { data: user } = useUser();
   
-  // Section visibility state
-  const [sectionsCollapsed, setSectionsCollapsed] = useState({
+  const initialSectionsState = {
     overview: false,
     proposalSummary: false,
     decisionSupport: false,
     analytics: false,
     proposals: false,
     quickActions: false,
-    tasks: false
-  });
+    tasks: false,
+  } as const;
+  
+  type SectionKey = keyof typeof initialSectionsState;
+
+  // Section visibility state
+  const [sectionsCollapsed, setSectionsCollapsed] = useState<Record<SectionKey, boolean>>(initialSectionsState);
 
   // Proposal filter state
   const [proposalFilters, setProposalFilters] = useState<ProposalFilters>({
@@ -85,7 +115,7 @@ export default function Dashboard() {
   });
 
   // Enhanced stats for new dashboard
-  const { data: enhancedStats, isLoading: enhancedStatsLoading } = useQuery({
+  const { data: enhancedStats, isLoading: enhancedStatsLoading } = useQuery<EnhancedDashboardStats>({
     queryKey: ["/api/dashboard/enhanced-stats"],
   });
 
@@ -93,7 +123,7 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/recent-requests"],
   });
 
-  const { data: myTasks, isLoading: tasksLoading } = useQuery({
+  const { data: myTasks = [], isLoading: tasksLoading } = useQuery<TaskItem[]>({
     queryKey: ["/api/tasks"],
   });
 
@@ -103,7 +133,7 @@ export default function Dashboard() {
   const showQuickActions = ['analyst', 'admin'].includes(userRole);
 
   // Toggle section visibility
-  const toggleSection = (section: string) => {
+  const toggleSection = (section: SectionKey) => {
     setSectionsCollapsed(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -172,8 +202,10 @@ export default function Dashboard() {
   // Get unique companies for filter dropdown
   const uniqueCompanies = useMemo(() => {
     if (!recentRequests) return [];
-    const companies = recentRequests.map(r => r.targetCompany).filter(Boolean);
-    return [...new Set(companies)];
+    const companies = recentRequests
+      .map((r) => r.targetCompany)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(companies));
   }, [recentRequests]);
 
   // Clear all filters

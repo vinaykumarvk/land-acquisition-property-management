@@ -4,13 +4,24 @@ import path from 'path';
 import { storage } from '../storage';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
 
-// Check if OpenAI API key is available
+// Lazy initialization of OpenAI client
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. AI features are disabled.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
+
+// Check if OpenAI API key is available (non-blocking)
 if (!process.env.OPENAI_API_KEY) {
-  console.error('OPENAI_API_KEY is not set');
+  console.warn('OPENAI_API_KEY is not set. AI features will be disabled.');
 }
 
 export interface VectorStoreDocument {
@@ -67,7 +78,7 @@ export class VectorStoreService {
       }
       
       // Use real OpenAI Vector Store API
-      const vectorStores = await openai.vectorStores.list();
+      const vectorStores = await getOpenAI().vectorStores.list();
       const existingStore = vectorStores.data.find(store => store.name === storeName);
           
       if (existingStore) {
@@ -82,7 +93,7 @@ export class VectorStoreService {
       }
       
       // Create new vector store
-      const vectorStore = await openai.vectorStores.create({
+      const vectorStore = await getOpenAI().vectorStores.create({
         name: storeName,
         expires_after: {
           anchor: 'last_active_at',
@@ -120,20 +131,21 @@ export class VectorStoreService {
       const storeId = vectorStoreId || vectorStore.id;
 
       // Upload file to OpenAI
+      const client = getOpenAI();
       console.log('OpenAI client status:', {
-        hasFiles: !!openai.files,
-        hasVectorStores: !!openai.vectorStores,
-        hasCreate: !!openai.files?.create
+        hasFiles: !!client.files,
+        hasVectorStores: !!client.vectorStores,
+        hasCreate: !!client.files?.create
       });
       
       const fileStream = fs.createReadStream(filePath);
-      const file = await openai.files.create({
+      const file = await client.files.create({
         file: fileStream,
         purpose: 'assistants',
       });
 
       // Add file to vector store
-      await openai.vectorStores.files.create(storeId, {
+      await client.vectorStores.files.create(storeId, {
         file_id: file.id,
       });
 
@@ -211,7 +223,7 @@ export class VectorStoreService {
       const storeId = query.vectorStoreId || vectorStore.id;
       
       // Create a temporary assistant for querying
-      const assistant = await openai.beta.assistants.create({
+      const assistant = await getOpenAI().beta.assistants.create({
         name: 'Document Query Assistant',
         instructions: `You are a helpful assistant that searches through uploaded documents to answer questions. 
         Focus on providing accurate information from the documents and cite which document the information comes from.
@@ -226,19 +238,20 @@ export class VectorStoreService {
       });
       
       // Create a thread and run the query
-      const thread = await openai.beta.threads.create();
+      const client = getOpenAI();
+      const thread = await client.beta.threads.create();
       
-      await openai.beta.threads.messages.create(thread.id, {
+      await client.beta.threads.messages.create(thread.id, {
         role: 'user',
         content: query.query
       });
       
-      const run = await openai.beta.threads.runs.createAndPoll(thread.id, {
+      const run = await client.beta.threads.runs.createAndPoll(thread.id, {
         assistant_id: assistant.id
       });
       
       if (run.status === 'completed') {
-        const messages = await openai.beta.threads.messages.list(thread.id);
+        const messages = await client.beta.threads.messages.list(thread.id);
         const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
         
         if (assistantMessage && assistantMessage.content[0].type === 'text') {

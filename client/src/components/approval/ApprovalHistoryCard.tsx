@@ -30,29 +30,32 @@ export function ApprovalHistoryCard({ requestType, requestId, isExpanded = true,
   const [showCompleteHistory, setShowCompleteHistory] = useState(false);
 
   // Fetch current cycle approvals (default view)
-  const { data: currentApprovals, isLoading: currentLoading } = useQuery({
+  const { data: currentApprovals, isLoading: currentLoading } = useQuery<ApprovalRecord[]>({
     queryKey: [`/api/approvals/${requestType}/${requestId}/current`],
     enabled: !showCompleteHistory,
   });
 
   // Fetch all cycle approvals (complete history)
-  const { data: allApprovals, isLoading: allLoading } = useQuery({
+  const { data: allApprovals, isLoading: allLoading } = useQuery<ApprovalRecord[]>({
     queryKey: [`/api/approvals/${requestType}/${requestId}/all`],
     enabled: showCompleteHistory,
   });
 
-  const approvals = showCompleteHistory ? allApprovals : currentApprovals;
+  const approvals = (showCompleteHistory ? allApprovals : currentApprovals) ?? [];
   const isLoading = showCompleteHistory ? allLoading : currentLoading;
 
   // Group approvals by cycle for complete history view
-  const groupedApprovals = approvals?.reduce((groups: Record<number, ApprovalRecord[]>, approval: ApprovalRecord) => {
-    const cycle = approval.approvalCycle;
-    if (!groups[cycle]) {
-      groups[cycle] = [];
-    }
-    groups[cycle].push(approval);
-    return groups;
-  }, {});
+  const groupedApprovals = approvals.reduce<Record<number, ApprovalRecord[]>>(
+    (groups, approval) => {
+      const cycle = approval.approvalCycle;
+      if (!groups[cycle]) {
+        groups[cycle] = [];
+      }
+      groups[cycle].push(approval);
+      return groups;
+    },
+    {}
+  );
 
   const getStatusIcon = (status: string) => {
     if (status === 'approved' || status.includes('approved')) {
@@ -112,8 +115,8 @@ export function ApprovalHistoryCard({ requestType, requestId, isExpanded = true,
 
   const renderCurrentCycleView = () => (
     <div className="space-y-3">
-      {approvals && approvals.length > 0 ? (
-        approvals.map((approval: ApprovalRecord) => renderApprovalRecord(approval))
+      {approvals.length > 0 ? (
+        approvals.map((approval) => renderApprovalRecord(approval))
       ) : (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           <p>No approval history yet</p>

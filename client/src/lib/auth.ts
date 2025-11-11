@@ -69,3 +69,43 @@ export function useRegister() {
     },
   });
 }
+
+export function useSendOTP() {
+  return useMutation({
+    mutationFn: async (phone: string) => {
+      const response = await apiRequest("POST", "/api/public/auth/send-otp", { phone });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to send OTP");
+      }
+      return response.json();
+    },
+  });
+}
+
+export function useVerifyOTP() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      phone: string;
+      otp: string;
+      userData?: {
+        firstName: string;
+        lastName: string;
+        email?: string;
+        aadhaar?: string;
+      };
+    }) => {
+      const response = await apiRequest("POST", "/api/public/auth/verify-otp", data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to verify OTP");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+}

@@ -1,160 +1,162 @@
+/**
+ * Notification Service
+ * Handles user notifications for workflow events
+ */
+
 import { storage } from "../storage";
+import { InsertNotification } from "@shared/schema";
 
 export class NotificationService {
-  async notifyRequestApproved(requestType: string, requestId: number) {
-    // Get request details to find requester
-    let request;
-    if (requestType === 'investment') {
-      request = await storage.getInvestmentRequest(requestId);
-    } else {
-      request = await storage.getCashRequest(requestId);
-    }
-
-    if (!request) return;
-
-    await storage.createNotification({
-      userId: request.requesterId!,
-      title: 'Request Approved',
-      message: `Your ${requestType.replace('_', ' ')} request has been approved`,
-      type: 'status_update',
-      relatedType: requestType,
-      relatedId: requestId,
-    });
+  /**
+   * Create a notification
+   */
+  async createNotification(notification: InsertNotification): Promise<any> {
+    return await storage.createNotification(notification);
   }
 
-  async notifyRequestRejected(requestType: string, requestId: number) {
-    // Get request details to find requester
-    let request;
-    if (requestType === 'investment') {
-      request = await storage.getInvestmentRequest(requestId);
-    } else {
-      request = await storage.getCashRequest(requestId);
-    }
-
-    if (!request) return;
-
-    await storage.createNotification({
-      userId: request.requesterId!,
-      title: 'Request Rejected',
-      message: `Your ${requestType.replace('_', ' ')} request has been rejected`,
-      type: 'status_update',
-      relatedType: requestType,
-      relatedId: requestId,
-    });
-  }
-
-  async notifyChangesRequested(requestType: string, requestId: number) {
-    // Get request details to find requester
-    let request;
-    if (requestType === 'investment') {
-      request = await storage.getInvestmentRequest(requestId);
-    } else {
-      request = await storage.getCashRequest(requestId);
-    }
-
-    if (!request) return;
-
-    await storage.createNotification({
-      userId: request.requesterId!,
-      title: 'Changes Requested',
-      message: `Changes have been requested for your ${requestType.replace('_', ' ')} request`,
-      type: 'status_update',
-      relatedType: requestType,
-      relatedId: requestId,
-    });
-  }
-
-  async notifyTaskAssigned(userId: number, taskId: number) {
-    await storage.createNotification({
-      userId,
-      title: 'New Task Assigned',
-      message: 'A new task has been assigned to you',
-      type: 'task_assigned',
-      relatedType: 'task',
-      relatedId: taskId,
-    });
-  }
-
+  /**
+   * Notify previous approvers about higher stage actions
+   */
   async notifyPreviousApprovers(
-    requestType: string, 
-    requestId: number, 
-    higherStageAction: 'rejected' | 'changes_requested' | 'cancelled',
+    requestType: string,
+    requestId: number,
+    action: 'rejected' | 'changes_requested',
     higherStageRole: string,
-    higherStageComments?: string
-  ) {
+    comments?: string
+  ): Promise<void> {
     try {
-      // Get investment/cash request details for summary
-      let request;
+      // Get all approvals for this request
+      const approvals = await storage.getCurrentCycleApprovalsByRequest(requestType, requestId);
+      
+      // Get request details
+      let requestDetails: any = null;
       if (requestType === 'investment') {
-        request = await storage.getInvestmentRequest(requestId);
-      } else {
-        request = await storage.getCashRequest(requestId);
+        requestDetails = await storage.getInvestmentRequest(requestId);
+      } else if (requestType === 'cash_request') {
+        requestDetails = await storage.getCashRequest(requestId);
       }
 
-      if (!request) return;
-
-      // Get current cycle approvals to find previous approvers
-      const currentApprovals = await storage.getCurrentCycleApprovalsByRequest(requestType, requestId);
-      const approvedApprovals = currentApprovals.filter(approval => 
-        approval.status.includes('approved') && approval.approverId
-      );
-
-      // Create investment summary for popup display
-      const investmentSummary = {
-        requestId: request.requestId,
-        targetCompany: requestType === 'investment' ? (request as any).targetCompany : 'N/A',
-        amount: request.amount,
-        investmentType: requestType === 'investment' ? (request as any).investmentType : 'cash_request',
-        expectedReturn: requestType === 'investment' ? (request as any).expectedReturn : null,
-        riskLevel: requestType === 'investment' ? (request as any).riskLevel : null,
-      };
-
-      // Role name mapping for user-friendly display
-      const roleNames = {
-        admin: 'Admin',
-        manager: 'Manager', 
-        committee_member: 'Committee',
-        finance: 'Finance'
-      };
-
-      const higherStageName = roleNames[higherStageRole as keyof typeof roleNames] || higherStageRole;
-      const actionText = higherStageAction === 'changes_requested' ? 'requested changes' : higherStageAction;
-
       // Notify each previous approver
-      for (const approval of approvedApprovals) {
-        if (approval.approverId) {
-          const approverRole = await storage.getUser(approval.approverId);
-          const approverRoleName = roleNames[approverRole?.role as keyof typeof roleNames] || approverRole?.role;
-
+      for (const approval of approvals) {
+        if (approval.approverId && approval.status === 'approved') {
+          const actionText = action === 'rejected' ? 'rejected' : 'requested changes to';
+          
           await storage.createNotification({
             userId: approval.approverId,
-            title: `Investment ${actionText} by ${higherStageName}`,
-            message: `${request.requestId} (${investmentSummary.targetCompany}) that you approved as ${approverRoleName} has been ${actionText} by ${higherStageName}`,
+            title: `Request ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+            message: `A ${higherStageRole} has ${actionText} the ${requestType.replace('_', ' ')} request you previously approved.`,
             type: 'higher_stage_action',
             relatedType: requestType,
             relatedId: requestId,
             previousApproverStage: approval.stage,
-            higherStageAction,
+            higherStageAction: action,
             higherStageRole,
-            higherStageComments: higherStageComments || null,
-            investmentSummary,
+            higherStageComments: comments,
+            investmentSummary: requestDetails ? {
+              requestId: requestDetails.requestId,
+              amount: requestDetails.amount,
+              status: requestDetails.status,
+            } : undefined,
           });
         }
       }
     } catch (error) {
       console.error('Error notifying previous approvers:', error);
+      // Don't throw - notification failures shouldn't break the workflow
     }
   }
 
-  async notifySLABreach(userId: number, requestType: string, requestId: number) {
-    await storage.createNotification({
-      userId,
-      title: 'SLA Breach Warning',
-      message: `${requestType.replace('_', ' ')} request is approaching SLA deadline`,
-      type: 'sla_warning',
-      relatedType: requestType,
-      relatedId: requestId,
-    });
+  /**
+   * Notify requester that request was approved
+   */
+  async notifyRequestApproved(requestType: string, requestId: number): Promise<void> {
+    try {
+      let request: any = null;
+      let requesterId: number | null = null;
+
+      if (requestType === 'investment') {
+        request = await storage.getInvestmentRequest(requestId);
+        requesterId = request?.requesterId || null;
+      } else if (requestType === 'cash_request') {
+        request = await storage.getCashRequest(requestId);
+        requesterId = request?.requesterId || null;
+      }
+
+      if (requesterId) {
+        await storage.createNotification({
+          userId: requesterId,
+          title: 'Request Approved',
+          message: `Your ${requestType.replace('_', ' ')} request has been approved.`,
+          type: 'status_update',
+          relatedType: requestType,
+          relatedId: requestId,
+        });
+      }
+    } catch (error) {
+      console.error('Error notifying request approved:', error);
+    }
+  }
+
+  /**
+   * Notify requester that request was rejected
+   */
+  async notifyRequestRejected(requestType: string, requestId: number): Promise<void> {
+    try {
+      let request: any = null;
+      let requesterId: number | null = null;
+
+      if (requestType === 'investment') {
+        request = await storage.getInvestmentRequest(requestId);
+        requesterId = request?.requesterId || null;
+      } else if (requestType === 'cash_request') {
+        request = await storage.getCashRequest(requestId);
+        requesterId = request?.requesterId || null;
+      }
+
+      if (requesterId) {
+        await storage.createNotification({
+          userId: requesterId,
+          title: 'Request Rejected',
+          message: `Your ${requestType.replace('_', ' ')} request has been rejected. Please review and resubmit.`,
+          type: 'status_update',
+          relatedType: requestType,
+          relatedId: requestId,
+        });
+      }
+    } catch (error) {
+      console.error('Error notifying request rejected:', error);
+    }
+  }
+
+  /**
+   * Notify requester that changes are requested
+   */
+  async notifyChangesRequested(requestType: string, requestId: number): Promise<void> {
+    try {
+      let request: any = null;
+      let requesterId: number | null = null;
+
+      if (requestType === 'investment') {
+        request = await storage.getInvestmentRequest(requestId);
+        requesterId = request?.requesterId || null;
+      } else if (requestType === 'cash_request') {
+        request = await storage.getCashRequest(requestId);
+        requesterId = request?.requesterId || null;
+      }
+
+      if (requesterId) {
+        await storage.createNotification({
+          userId: requesterId,
+          title: 'Changes Requested',
+          message: `Changes have been requested for your ${requestType.replace('_', ' ')} request. Please review and update.`,
+          type: 'status_update',
+          relatedType: requestType,
+          relatedId: requestId,
+        });
+      }
+    } catch (error) {
+      console.error('Error notifying changes requested:', error);
+    }
   }
 }
 

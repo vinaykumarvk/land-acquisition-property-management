@@ -172,7 +172,7 @@ export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: notifications = [], refetch } = useQuery({
+  const { data: notifications = [], refetch } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000, // Poll every 30 seconds
   });

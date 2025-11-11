@@ -30,7 +30,7 @@ interface DocumentInsightsProps {
 }
 
 const DocumentInsights: React.FC<DocumentInsightsProps> = ({ requestType, requestId }) => {
-  const { data: insights, isLoading, error } = useQuery({
+  const { data: insights, isLoading, error } = useQuery<DocumentInsights>({
     queryKey: ['document-insights', requestType, requestId],
     queryFn: () => fetch(`/api/documents/insights/${requestType}/${requestId}`)
       .then(res => res.json()),

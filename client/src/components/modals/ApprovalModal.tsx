@@ -24,17 +24,17 @@ export function ApprovalModal({ isOpen, onClose, task }: ApprovalModalProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  const { data: requestData } = useQuery({
+  const { data: requestData } = useQuery<Record<string, any>>({
     queryKey: [`/api/${task?.requestType.replace('_', '-')}s/${task?.requestId}`],
     enabled: !!task,
   })
 
-  const { data: approvalHistory } = useQuery({
+  const { data: approvalHistory } = useQuery<any>({
     queryKey: [`/api/approvals/${task?.requestType}/${task?.requestId}`],
     enabled: !!task,
   })
 
-  const { data: documents } = useQuery({
+  const { data: documents = [] } = useQuery<any[]>({
     queryKey: [`/api/documents/${task?.requestType}/${task?.requestId}`],
     enabled: !!task,
   })

@@ -17,6 +17,10 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { Template } from '@shared/schema';
 
+type InvestmentTemplate = Template & {
+  description?: string | null;
+};
+
 const templateFormSchema = z.object({
   name: z.string().min(1, "Template name is required"),
   investmentType: z.enum(["equity", "debt", "real_estate", "alternative", "general"]),
@@ -37,11 +41,11 @@ const Templates: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<InvestmentTemplate | null>(null);
   const [sections, setSections] = useState([{ name: '', description: '', wordLimit: 200, focusAreas: [] as string[] }]);
 
   // Fetch templates
-  const { data: templates, isLoading } = useQuery({
+  const { data: templates = [], isLoading } = useQuery<InvestmentTemplate[]>({
     queryKey: ['/api/templates/investment'],
     queryFn: async () => {
       const response = await fetch('/api/templates/investment', {
@@ -155,7 +159,7 @@ const Templates: React.FC = () => {
     setIsCreateModalOpen(false);
   };
 
-  const handleEditTemplate = (template: Template) => {
+  const handleEditTemplate = (template: InvestmentTemplate) => {
     setEditingTemplate(template);
     const templateData = typeof template.templateData === 'string' 
       ? JSON.parse(template.templateData) 
@@ -398,8 +402,8 @@ const Templates: React.FC = () => {
         <div className="text-center py-8">Loading templates...</div>
       ) : (
         <div className="space-y-6">
-          {templates && (templates as Template[]).length > 0 ? (
-            (templates as Template[]).map((template) => (
+        {templates.length > 0 ? (
+          templates.map((template) => (
               <Card key={template.id} className="overflow-hidden">
                 <Collapsible>
                   <CollapsibleTrigger asChild>
@@ -453,7 +457,7 @@ const Templates: React.FC = () => {
                   
                   <CollapsibleContent>
                     <CardContent className="pt-0">
-                      <p className="text-gray-600 mb-6">{template.description}</p>
+                      <p className="text-gray-600 mb-6">{template.description || 'No description provided.'}</p>
                       
                       {/* Template Sections */}
                       <div className="space-y-4">
@@ -489,7 +493,8 @@ const Templates: React.FC = () => {
                       </div>
 
                       <div className="text-xs text-gray-500 pt-4 border-t mt-6">
-                        Created by {template.createdBy} • {new Date(template.createdAt).toLocaleDateString()}
+                        Created by {template.createdBy ?? 'System'} •{" "}
+                        {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
                     </CardContent>
                   </CollapsibleContent>

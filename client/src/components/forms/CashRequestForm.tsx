@@ -14,10 +14,10 @@ import { insertCashRequestSchema } from "@shared/schema"
 import { z } from "zod"
 
 const formSchema = insertCashRequestSchema.extend({
-  amount: z.string().transform(val => parseFloat(val)),
+  amount: z.coerce.number().positive("Amount is required"),
 })
 
-type FormData = z.infer<typeof formSchema>
+type CashFormData = z.infer<typeof formSchema>
 
 interface CashRequestFormProps {
   onSuccess?: () => void
@@ -28,22 +28,22 @@ export function CashRequestForm({ onSuccess }: CashRequestFormProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  const { data: approvedInvestments } = useQuery({
+  const { data: approvedInvestments } = useQuery<any[]>({
     queryKey: ["/api/investments", { status: "approved" }],
   })
 
-  const form = useForm<FormData>({
+  const form = useForm<CashFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       investmentId: undefined,
-      amount: "",
+      amount: 0 as CashFormData["amount"],
       purpose: "",
       paymentTimeline: "immediate",
     },
   })
 
   const createCashRequest = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: CashFormData) => {
       const response = await apiRequest("POST", "/api/cash-requests", data)
       return response.json()
     },
@@ -69,7 +69,7 @@ export function CashRequestForm({ onSuccess }: CashRequestFormProps) {
   })
 
   const saveDraft = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: CashFormData) => {
       const response = await apiRequest("POST", "/api/cash-requests", {
         ...data,
         status: "draft",
@@ -84,7 +84,7 @@ export function CashRequestForm({ onSuccess }: CashRequestFormProps) {
     },
   })
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: CashFormData) => {
     createCashRequest.mutate(data)
   }
 
@@ -99,7 +99,7 @@ export function CashRequestForm({ onSuccess }: CashRequestFormProps) {
         <Label htmlFor="investmentId">Related Investment</Label>
         <Select 
           value={form.watch("investmentId")?.toString()} 
-          onValueChange={(value) => form.setValue("investmentId", parseInt(value))}
+          onValueChange={(value) => form.setValue("investmentId", value ? parseInt(value) : undefined)}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select approved investment..." />
@@ -124,7 +124,7 @@ export function CashRequestForm({ onSuccess }: CashRequestFormProps) {
           type="number"
           step="0.01"
           placeholder="0.00"
-          {...form.register("amount")}
+          {...form.register("amount", { valueAsNumber: true })}
         />
         {form.formState.errors.amount && (
           <p className="text-sm text-red-600">{form.formState.errors.amount.message}</p>

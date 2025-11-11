@@ -1,0 +1,57 @@
+[0;34m========================================[0m
+[0;34mLAMS Functional Test Execution[0m
+[0;34m========================================[0m
+
+[0;34mChecking server availability...[0m
+[0;32mServer is running[0m
+
+[0;34m=== MODULE 1: SIA Management ===[0m
+
+Testing TC-SIA-001: Create Draft SIA...
+[0;31m✗[0m TC-SIA-001: Create Draft SIA - Failed to create SIA: {"message":"value.toISOString is not a function"}
+[1;33m⊘[0m TC-SIA-002: Publish SIA - No SIA ID from previous test
+[1;33m⊘[0m TC-SIA-003: Schedule Hearing - No SIA ID available
+
+[0;34m=== MODULE 2: Notifications ===[0m
+
+Testing TC-NOT-001: Create Section 11 Notification...
+[0;31m✗[0m TC-NOT-001: Create Section 11 Notification - Failed to create: {"message":"storage.createAuditLog is not a function"}
+[1;33m⊘[0m TC-NOT-002: Submit for Legal Review - No notification ID from previous test
+[1;33m⊘[0m TC-NOT-003: Legal Officer Approves - No notification ID available
+
+[0;34m=== MODULE 3: Objections ===[0m
+
+Testing TC-OBJ-001: Submit Public Objection...
+[1;33m⊘[0m TC-OBJ-001: Submit Public Objection - No notification or parcel ID available
+Testing TC-OBJ-002: View Objections...
+[0;32m✓[0m TC-OBJ-002: View Objections
+[1;33m⊘[0m TC-OBJ-003: Resolve Objection - No objection ID available
+
+[0;34m=== MODULE 4: Compensation & Awards ===[0m
+
+Testing TC-COMP-001: Create Parcel Valuation...
+[0;31m✗[0m TC-COMP-001: Create Parcel Valuation - Failed to create: {"message":"null value in column \"area_sq_m\" of relation \"valuations\" violates not-null constraint"}
+Testing TC-COMP-002: Draft Compensation Award...
+[0;31m✗[0m TC-COMP-002: Draft Compensation Award - Failed to create: {"message":"Owner does not have a share in this parcel"}
+
+[0;34m=== MODULE 5: Possession ===[0m
+
+Testing TC-POS-001: Schedule Possession...
+[0;31m✗[0m TC-POS-001: Schedule Possession - Failed to schedule: {"message":"Cannot access 'possession2' before initialization"}
+
+[0;34m=== MODULE 6: Dashboard ===[0m
+
+Testing TC-DASH-001: View LAMS Dashboard...
+[0;32m✓[0m TC-DASH-001: View LAMS Dashboard
+
+[0;34m========================================[0m
+[0;34mTest Execution Summary[0m
+[0;34m========================================[0m
+
+Total Tests: 13
+[0;32mPassed: 2[0m
+[0;31mFailed: 5[0m
+[1;33mSkipped: 6[0m
+
+Detailed results saved to: [0;34mLAMS_TEST_RESULTS.md[0m
+

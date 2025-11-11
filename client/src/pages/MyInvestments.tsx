@@ -45,6 +45,19 @@ interface InvestmentFilters {
   amountMax: string;
 }
 
+interface InvestmentSummary {
+  id: number;
+  requestId: string;
+  status: string;
+  targetCompany?: string;
+  riskLevel?: string;
+  investmentType?: string;
+  expectedReturn?: string;
+  amount?: string;
+  createdAt?: string;
+  description?: string;
+}
+
 export default function MyInvestments() {
   const [expandedInvestment, setExpandedInvestment] = useState<number | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -64,7 +77,7 @@ export default function MyInvestments() {
     amountMax: ''
   });
 
-  const { data: investments, isLoading } = useQuery({
+  const { data: investments = [], isLoading } = useQuery<InvestmentSummary[]>({
     queryKey: ["/api/investments", { my: true }],
   });
 
@@ -74,36 +87,43 @@ export default function MyInvestments() {
 
   // Extract unique values for filter options
   const uniqueCompanies = useMemo(() => {
-    return [...new Set(investments?.map((inv: any) => inv.targetCompany) || [])].sort();
+    return Array.from(new Set(investments.map((inv) => inv.targetCompany).filter((name): name is string => Boolean(name)))).sort();
   }, [investments]);
 
   const uniqueInvestmentTypes = useMemo(() => {
-    return [...new Set(investments?.map((inv: any) => inv.investmentType) || [])].sort();
+    return Array.from(new Set(investments.map((inv) => inv.investmentType).filter((type): type is string => Boolean(type)))).sort();
   }, [investments]);
 
   // Filter investments based on current filters
   const filteredInvestments = useMemo(() => {
-    if (!investments) return [];
-    
-    return investments.filter((inv: any) => {
+    return investments.filter((inv) => {
       // Search by Request ID filter
       if (filters.searchRequestId.trim() && !inv.requestId.toLowerCase().includes(filters.searchRequestId.toLowerCase())) {
         return false;
       }
       
       // Company filter
-      if (filters.selectedCompanies.length > 0 && !filters.selectedCompanies.includes(inv.targetCompany)) {
-        return false;
+      if (filters.selectedCompanies.length > 0) {
+        const company = inv.targetCompany;
+        if (!company || !filters.selectedCompanies.includes(company)) {
+          return false;
+        }
       }
       
       // Risk level filter
-      if (filters.selectedRiskLevels.length > 0 && !filters.selectedRiskLevels.includes(inv.riskLevel)) {
-        return false;
+      if (filters.selectedRiskLevels.length > 0) {
+        const riskLevel = inv.riskLevel;
+        if (!riskLevel || !filters.selectedRiskLevels.includes(riskLevel)) {
+          return false;
+        }
       }
       
       // Investment type filter
-      if (filters.selectedInvestmentTypes.length > 0 && !filters.selectedInvestmentTypes.includes(inv.investmentType)) {
-        return false;
+      if (filters.selectedInvestmentTypes.length > 0) {
+        const investmentType = inv.investmentType;
+        if (!investmentType || !filters.selectedInvestmentTypes.includes(investmentType)) {
+          return false;
+        }
       }
       
       // Expected return filter

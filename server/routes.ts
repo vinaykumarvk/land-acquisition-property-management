@@ -6,6 +6,45 @@ import { investmentService } from "./services/investmentService";
 import { workflowService } from "./services/workflowService";
 import { notificationService } from "./services/notificationService";
 import { authService } from "./services/authService";
+import { siaService } from "./services/siaService";
+import { landNotificationService } from "./services/landNotificationService";
+import { objectionService } from "./services/objectionService";
+import { reportsService } from "./services/reportsService";
+import { compensationService } from "./services/compensationService";
+import { possessionService } from "./services/possessionService";
+import { partyService } from "./services/propertyManagement/partyService";
+import { schemeService } from "./services/propertyManagement/schemeService";
+import { propertyService } from "./services/propertyManagement/propertyService";
+import { allotmentService } from "./services/propertyManagement/allotmentService";
+import { drawService } from "./services/propertyManagement/drawService";
+import { transferService } from "./services/propertyManagement/transferService";
+import { mortgageService } from "./services/propertyManagement/mortgageService";
+import { modificationService } from "./services/propertyManagement/modificationService";
+import { nocService } from "./services/propertyManagement/nocService";
+import { registrationService } from "./services/propertyManagement/registrationService";
+import { valuationService } from "./services/propertyManagement/valuationService";
+import { encumbranceService } from "./services/propertyManagement/encumbranceService";
+import { sroService } from "./services/propertyManagement/sroService";
+import { deedService } from "./services/propertyManagement/deedService";
+import { conveyanceService } from "./services/propertyManagement/conveyanceService";
+import { demandNoteService } from "./services/propertyManagement/demandNoteService";
+import { paymentService } from "./services/propertyManagement/paymentService";
+import { receiptService } from "./services/propertyManagement/receiptService";
+import { refundService } from "./services/propertyManagement/refundService";
+import { ledgerService } from "./services/propertyManagement/ledgerService";
+import { waterConnectionService } from "./services/propertyManagement/waterConnectionService";
+import { sewerageConnectionService } from "./services/propertyManagement/sewerageConnectionService";
+import { grievanceService } from "./services/propertyManagement/grievanceService";
+import { legalCaseService } from "./services/propertyManagement/legalCaseService";
+import { citizenService } from "./services/propertyManagement/citizenService";
+import { passbookService } from "./services/propertyManagement/passbookService";
+import { serviceRequestService } from "./services/propertyManagement/serviceRequestService";
+import { demarcationService } from "./services/propertyManagement/demarcationService";
+import { dpcService } from "./services/propertyManagement/dpcService";
+import { certificateService } from "./services/propertyManagement/certificateService";
+import { deviationService } from "./services/propertyManagement/deviationService";
+import { pmsAnalyticsService } from "./services/propertyManagement/pmsAnalyticsService";
+import { pmsReportsService } from "./services/propertyManagement/pmsReportsService";
 import { documentAnalysisService } from "./services/documentAnalysisService";
 import { vectorStoreService } from "./services/vectorStoreService";
 import { backgroundJobService } from "./services/backgroundJobService";
@@ -17,6 +56,8 @@ import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
+import exifr from "exifr";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -1954,6 +1995,3236 @@ Note: This is an AI-generated analysis based on the selected template structure.
         message: 'Failed to generate comprehensive proposal',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // ============================================================================
+  // LAMS API Routes
+  // ============================================================================
+
+  // SIA Routes
+  app.post('/api/lams/sia', authMiddleware, async (req, res) => {
+    try {
+      const sia = await siaService.createSia(req.body, req.userId!);
+      res.json(sia);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating SIA' });
+    }
+  });
+
+  app.get('/api/lams/sia', authMiddleware, async (req, res) => {
+    try {
+      const { status, createdBy } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (createdBy) filters.createdBy = parseInt(createdBy as string);
+      const sias = await siaService.getSias(filters);
+      res.json(sias);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching SIAs' });
+    }
+  });
+
+  app.get('/api/lams/sia/:id', authMiddleware, async (req, res) => {
+    try {
+      const sia = await siaService.getSiaWithDetails(parseInt(req.params.id));
+      res.json(sia);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'SIA not found' });
+    }
+  });
+
+  app.put('/api/lams/sia/:id', authMiddleware, async (req, res) => {
+    try {
+      const sia = await siaService.updateSia(parseInt(req.params.id), req.body, req.userId!);
+      res.json(sia);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating SIA' });
+    }
+  });
+
+  app.post('/api/lams/sia/:id/publish', authMiddleware, async (req, res) => {
+    try {
+      const sia = await siaService.publishSia(parseInt(req.params.id), req.userId!);
+      res.json(sia);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error publishing SIA' });
+    }
+  });
+
+  app.post('/api/lams/sia/:id/feedback', async (req, res) => {
+    try {
+      // Public endpoint - no auth required for citizen feedback
+      const feedback = await siaService.submitFeedback(parseInt(req.params.id), req.body);
+      res.json(feedback);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting feedback' });
+    }
+  });
+
+  // ============================================================================
+  // Public API Routes (No Authentication Required)
+  // ============================================================================
+
+  // Citizen OTP Authentication
+  app.post('/api/public/auth/send-otp', async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ message: 'Phone number is required' });
+      }
+      const result = await authService.sendOTP(phone);
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to send OTP' });
+    }
+  });
+
+  app.post('/api/public/auth/verify-otp', async (req, res) => {
+    try {
+      const { phone, otp, userData } = req.body;
+      if (!phone || !otp) {
+        return res.status(400).json({ message: 'Phone number and OTP are required' });
+      }
+      const result = await authService.verifyOTP(phone, otp, userData);
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+      
+      // Set session
+      req.session.userId = result.user!.id;
+      req.session.userRole = result.user!.role;
+      
+      res.json({ user: result.user, message: 'OTP verified successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'OTP verification failed' });
+    }
+  });
+
+  // Public SIA List (published SIAs only)
+  app.get('/api/public/sia', async (req, res) => {
+    try {
+      const sias = await siaService.getSias({ status: 'published' });
+      res.json(sias);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching published SIAs' });
+    }
+  });
+
+  app.get('/api/public/sia/:id', async (req, res) => {
+    try {
+      const sia = await siaService.getSiaWithDetails(parseInt(req.params.id));
+      // Only return if published
+      if (sia.status !== 'published') {
+        return res.status(404).json({ message: 'SIA not found' });
+      }
+      res.json(sia);
+    } catch (error) {
+      res.status(404).json({ message: 'SIA not found' });
+    }
+  });
+
+  const PUBLIC_NOTIFICATION_STATUSES = ['published', 'objection_window_open', 'objection_resolved'];
+
+  // Public Land Notifications (published notifications + objection window)
+  app.get('/api/public/notifications', async (req, res) => {
+    try {
+      const notifications = await landNotificationService.getNotifications();
+      const publicNotifications = notifications.filter(notification =>
+        PUBLIC_NOTIFICATION_STATUSES.includes(notification.status)
+      );
+      res.json(publicNotifications);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching published notifications' });
+    }
+  });
+
+  app.get('/api/public/notifications/:id', async (req, res) => {
+    try {
+      const notification = await landNotificationService.getNotificationWithDetails(parseInt(req.params.id));
+      if (!PUBLIC_NOTIFICATION_STATUSES.includes(notification.status)) {
+        return res.status(404).json({ message: 'Notification not found' });
+      }
+      res.json(notification);
+    } catch (error) {
+      res.status(404).json({ message: 'Notification not found' });
+    }
+  });
+
+  // Public Document Verification (via QR code hash)
+  app.get('/api/public/documents/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      // Find document by hash (stored in documents table or separate verification table)
+      // For now, we'll search through published documents
+      const documents = await storage.getDocumentsByRequest('land_notification', 0); // This needs to be updated
+      // In production, add a hash field to documents or create a verification table
+      res.json({ verified: false, message: 'Document verification not yet implemented' });
+    } catch (error) {
+      res.status(500).json({ message: 'Document verification failed' });
+    }
+  });
+
+  const MAX_OBJECTION_ATTACHMENTS = 3;
+  const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
+
+  const cleanupUploadedFiles = (files?: Express.Multer.File[] | Express.Multer.File) => {
+    if (!files) return;
+    const list = Array.isArray(files) ? files : [files];
+    for (const file of list) {
+      fs.unlink(file.path, () => {});
+    }
+  };
+
+  // Public Objection Submission (supports attachments)
+  app.post('/api/public/objections', fileUpload.array('attachments', MAX_OBJECTION_ATTACHMENTS), async (req, res) => {
+    const files = req.files as Express.Multer.File[] | undefined;
+    try {
+      const {
+        notificationId,
+        parcelId,
+        text,
+        name,
+        phone,
+        email,
+        aadhaar,
+      } = req.body;
+
+      if (!notificationId || !parcelId || !text || !name || !phone) {
+        cleanupUploadedFiles(files);
+        return res.status(400).json({ message: 'Notification, parcel, name, phone, and objection text are required' });
+      }
+
+      if (files && files.length > MAX_OBJECTION_ATTACHMENTS) {
+        cleanupUploadedFiles(files);
+        return res.status(400).json({ message: `Maximum ${MAX_OBJECTION_ATTACHMENTS} attachments are allowed` });
+      }
+
+      if (files?.some(file => file.size > MAX_ATTACHMENT_SIZE_BYTES)) {
+        cleanupUploadedFiles(files);
+        return res.status(400).json({ message: 'Each attachment must be 25MB or smaller' });
+      }
+
+      const attachments = files?.map(file => ({
+        path: file.path,
+        originalName: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+      }));
+
+      const objection = await objectionService.submitObjection({
+        notificationId: parseInt(notificationId),
+        parcelId: parseInt(parcelId),
+        text,
+        submittedByName: name,
+        submittedByPhone: phone,
+        submittedByEmail: email || null,
+        submittedByAadhaar: aadhaar || null,
+        attachmentsJson: attachments ?? null,
+      });
+      res.json(objection);
+    } catch (error) {
+      cleanupUploadedFiles(files);
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting objection' });
+    }
+  });
+
+  // Authenticated file upload helper for officer workflows
+  app.post('/api/uploads', authMiddleware, fileUpload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: 'File is required' });
+      }
+      const fileBuffer = fs.readFileSync(file.path);
+      const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      let gpsLat: number | null = null;
+      let gpsLng: number | null = null;
+      let metadataSource: 'exif' | null = null;
+      try {
+        const gpsData = await exifr.gps(file.path);
+        if (
+          gpsData &&
+          typeof gpsData.latitude === 'number' &&
+          typeof gpsData.longitude === 'number'
+        ) {
+          gpsLat = Number(gpsData.latitude.toFixed(7));
+          gpsLng = Number(gpsData.longitude.toFixed(7));
+          metadataSource = 'exif';
+        }
+      } catch (error) {
+        console.warn('Unable to parse EXIF data for upload', error);
+      }
+      res.json({
+        path: file.path,
+        originalName: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+        hash,
+        gpsLat,
+        gpsLng,
+        metadataSource,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'File upload failed' });
+    }
+  });
+
+  app.post('/api/lams/sia/:id/hearings', authMiddleware, async (req, res) => {
+    try {
+      const hearing = await siaService.scheduleHearing(parseInt(req.params.id), req.body, req.userId!);
+      res.json(hearing);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling hearing' });
+    }
+  });
+
+  app.put('/api/lams/sia/hearings/:id/complete', authMiddleware, async (req, res) => {
+    try {
+      const { minutesPath, attendees } = req.body;
+      const hearing = await siaService.completeHearing(
+        parseInt(req.params.id),
+        minutesPath,
+        attendees,
+        req.userId!
+      );
+      res.json(hearing);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing hearing' });
+    }
+  });
+
+  app.post('/api/lams/sia/:id/generate-report', authMiddleware, async (req, res) => {
+    try {
+      const report = await siaService.generateReport(parseInt(req.params.id), req.userId!);
+      res.json(report);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating report' });
+    }
+  });
+
+  app.post('/api/lams/sia/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const sia = await siaService.closeSia(parseInt(req.params.id), req.userId!);
+      res.json(sia);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing SIA' });
+    }
+  });
+
+  // Land Notification Routes (Sec 11/19)
+  app.post('/api/lams/notifications', authMiddleware, async (req, res) => {
+    try {
+      const { notificationData, parcelIds } = req.body;
+      
+      // Validate at least one parcel is selected
+      if (!parcelIds || !Array.isArray(parcelIds) || parcelIds.length === 0) {
+        return res.status(400).json({ message: 'At least one parcel must be selected' });
+      }
+      
+      const notification = await landNotificationService.createNotification(
+        notificationData,
+        parcelIds,
+        req.userId!
+      );
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating notification' });
+    }
+  });
+
+  app.get('/api/lams/notifications', authMiddleware, async (req, res) => {
+    try {
+      const { type, status } = req.query;
+      const filters: any = {};
+      if (type) filters.type = type as string;
+      if (status) filters.status = status as string;
+      const notifications = await landNotificationService.getNotifications(filters);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching notifications' });
+    }
+  });
+
+  app.get('/api/lams/notifications/:id', authMiddleware, async (req, res) => {
+    try {
+      const notification = await landNotificationService.getNotificationWithDetails(parseInt(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Notification not found' });
+    }
+  });
+
+  app.put('/api/lams/notifications/:id', authMiddleware, async (req, res) => {
+    try {
+      const { notificationData, parcelIds } = req.body;
+      const notification = await landNotificationService.updateNotification(
+        parseInt(req.params.id),
+        notificationData,
+        parcelIds,
+        req.userId!
+      );
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating notification' });
+    }
+  });
+
+  app.post('/api/lams/notifications/:id/submit-legal', authMiddleware, async (req, res) => {
+    try {
+      const notification = await landNotificationService.submitForLegalReview(
+        parseInt(req.params.id),
+        req.userId!
+      );
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting for review' });
+    }
+  });
+
+  app.post('/api/lams/notifications/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const { comments } = req.body;
+      const notification = await landNotificationService.approveNotification(
+        parseInt(req.params.id),
+        req.userId!,
+        comments
+      );
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving notification' });
+    }
+  });
+
+  app.post('/api/lams/notifications/:id/publish', authMiddleware, async (req, res) => {
+    try {
+      const { publishDate, notifyChannels } = req.body;
+      const notification = await landNotificationService.publishNotification(
+        parseInt(req.params.id),
+        new Date(publishDate),
+        req.userId!,
+        { notifyChannels }
+      );
+      res.json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error publishing notification' });
+    }
+  });
+
+  app.post('/api/lams/notifications/:id/preview', authMiddleware, async (req, res) => {
+    try {
+      const { publishDate } = req.body;
+      const preview = await landNotificationService.previewNotification(
+        parseInt(req.params.id),
+        new Date(publishDate || new Date())
+      );
+      const relativePath = path.relative(process.cwd(), preview.filePath);
+      res.json({
+        ...preview,
+        previewUrl: `/${relativePath.replace(/\\/g, '/')}`,
+      });
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating preview' });
+    }
+  });
+
+  // Objection Routes
+  app.post('/api/lams/objections', async (req, res) => {
+    try {
+      // Public endpoint - citizens can submit objections
+      // Support both { objectionData, userId } and direct objectionData
+      const objectionData = req.body.objectionData || req.body;
+      const userId = req.body.userId;
+      const objection = await objectionService.submitObjection(objectionData, userId);
+      res.json(objection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting objection' });
+    }
+  });
+
+  app.get('/api/lams/objections', authMiddleware, async (req, res) => {
+    try {
+      const { notificationId, status } = req.query;
+      const filters: any = {};
+      if (notificationId) filters.notificationId = parseInt(notificationId as string);
+      if (status) filters.status = status as string;
+      const objections = await objectionService.getObjections(filters);
+      res.json(objections);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching objections' });
+    }
+  });
+
+  app.get('/api/lams/objections/:id', authMiddleware, async (req, res) => {
+    try {
+      const objection = await objectionService.getObjectionWithDetails(parseInt(req.params.id));
+      res.json(objection);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Objection not found' });
+    }
+  });
+
+  app.post('/api/lams/objections/:id/resolve', authMiddleware, async (req, res) => {
+    try {
+      const { resolutionText, status } = req.body;
+      
+      // Validate resolution text is provided
+      if (!resolutionText || typeof resolutionText !== 'string' || resolutionText.trim().length === 0) {
+        return res.status(400).json({ message: 'Resolution text is required' });
+      }
+      
+      // Validate status
+      if (!status || !['resolved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: 'Status must be either "resolved" or "rejected"' });
+      }
+      
+      const objection = await objectionService.resolveObjection(
+        parseInt(req.params.id),
+        resolutionText,
+        status,
+        req.userId!
+      );
+      res.json(objection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error resolving objection' });
+    }
+  });
+
+  app.get('/api/lams/notifications/:id/unresolved-objections', authMiddleware, async (req, res) => {
+    try {
+      const objections = await objectionService.getUnresolvedObjections(parseInt(req.params.id));
+      res.json(objections);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching unresolved objections' });
+    }
+  });
+
+  // Parcel Routes (for LAMS)
+  app.get('/api/lams/parcels', authMiddleware, async (req, res) => {
+    try {
+      const { status, district } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (district) filters.district = district as string;
+      const parcels = await storage.getParcels(filters);
+      res.json(parcels);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching parcels' });
+    }
+  });
+
+  app.get('/api/lams/parcels/:id', authMiddleware, async (req, res) => {
+    try {
+      const parcel = await storage.getParcel(parseInt(req.params.id));
+      if (!parcel) {
+        return res.status(404).json({ message: 'Parcel not found' });
+      }
+      res.json(parcel);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching parcel' });
+    }
+  });
+
+  app.post('/api/lams/parcels', authMiddleware, async (req, res) => {
+    try {
+      const parcel = await storage.createParcel(req.body);
+      res.json(parcel);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating parcel' });
+    }
+  });
+
+  app.get('/api/lams/parcels/:id/owners', authMiddleware, async (req, res) => {
+    try {
+      const parcelId = parseInt(req.params.id);
+      const parcelOwners = await storage.getParcelOwners(parcelId);
+      res.json(parcelOwners);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching parcel owners' });
+    }
+  });
+
+  app.post('/api/lams/parcels/:id/owners', authMiddleware, async (req, res) => {
+    try {
+      const parcelId = parseInt(req.params.id);
+      const { ownerId, sharePct } = req.body;
+      
+      // Check if relationship already exists
+      const existing = await storage.getParcelOwners(parcelId);
+      const existingOwner = existing.find(po => po.ownerId === ownerId);
+      if (existingOwner) {
+        return res.status(400).json({ message: 'Owner already has a share in this parcel' });
+      }
+      
+      // Check total share percentage
+      const totalShare = existing.reduce((sum, po) => sum + Number(po.sharePct), 0);
+      if (totalShare + Number(sharePct) > 100) {
+        return res.status(400).json({ message: 'Total share percentage cannot exceed 100%' });
+      }
+      
+      const parcelOwner = await storage.createParcelOwner({
+        parcelId,
+        ownerId,
+        sharePct: Number(sharePct),
+      });
+      res.json(parcelOwner);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating parcel-owner relationship' });
+    }
+  });
+
+  app.put('/api/lams/parcels/:id', authMiddleware, async (req, res) => {
+    try {
+      const parcel = await storage.updateParcel(parseInt(req.params.id), req.body);
+      res.json(parcel);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating parcel' });
+    }
+  });
+
+  // Owner Routes (for LAMS)
+  app.get('/api/lams/owners', authMiddleware, async (req, res) => {
+    try {
+      const { name } = req.query;
+      const filters: any = {};
+      if (name) filters.name = name as string;
+      const owners = await storage.getOwners(filters);
+      res.json(owners);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching owners' });
+    }
+  });
+
+  app.post('/api/lams/owners', authMiddleware, async (req, res) => {
+    try {
+      const owner = await storage.createOwner(req.body);
+      res.json(owner);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating owner' });
+    }
+  });
+
+  // ============================================================================
+  // Compensation & Award Routes
+  // ============================================================================
+
+  // Valuation Routes
+  app.post('/api/lams/valuations', authMiddleware, async (req, res) => {
+    try {
+      const valuation = await compensationService.createValuation(req.body, req.userId!);
+      res.json(valuation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating valuation' });
+    }
+  });
+
+  app.get('/api/lams/valuations', authMiddleware, async (req, res) => {
+    try {
+      const { parcelId } = req.query;
+      const filters: any = {};
+      if (parcelId) filters.parcelId = parseInt(parcelId as string);
+      const valuations = await storage.getValuations(filters);
+      res.json(valuations);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching valuations' });
+    }
+  });
+
+  app.get('/api/lams/valuations/:id', authMiddleware, async (req, res) => {
+    try {
+      const valuation = await storage.getValuation(parseInt(req.params.id));
+      if (!valuation) {
+        return res.status(404).json({ message: 'Valuation not found' });
+      }
+      res.json(valuation);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching valuation' });
+    }
+  });
+
+  app.get('/api/lams/parcels/:id/valuation', authMiddleware, async (req, res) => {
+    try {
+      const valuation = await storage.getValuationByParcel(parseInt(req.params.id));
+      if (!valuation) {
+        return res.status(404).json({ message: 'Valuation not found for this parcel' });
+      }
+      res.json(valuation);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching valuation' });
+    }
+  });
+
+  app.put('/api/lams/valuations/:id', authMiddleware, async (req, res) => {
+    try {
+      const valuation = await storage.updateValuation(parseInt(req.params.id), req.body);
+      res.json(valuation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating valuation' });
+    }
+  });
+
+  // Award Routes
+  app.post('/api/lams/awards', authMiddleware, async (req, res) => {
+    try {
+      const award = await compensationService.createAward(req.body, req.userId!);
+      res.json(award);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating award' });
+    }
+  });
+
+  app.get('/api/lams/awards', authMiddleware, async (req, res) => {
+    try {
+      const { parcelId, ownerId, status } = req.query;
+      const filters: any = {};
+      if (parcelId) filters.parcelId = parseInt(parcelId as string);
+      if (ownerId) filters.ownerId = parseInt(ownerId as string);
+      if (status) filters.status = status as string;
+      const awards = await compensationService.getAwards(filters);
+      res.json(awards);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching awards' });
+    }
+  });
+
+  app.get('/api/lams/awards/:id', authMiddleware, async (req, res) => {
+    try {
+      const award = await compensationService.getAwardWithDetails(parseInt(req.params.id));
+      res.json(award);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Award not found' });
+    }
+  });
+
+  app.post('/api/lams/awards/:id/submit-finance', authMiddleware, async (req, res) => {
+    try {
+      const award = await compensationService.submitForFinanceReview(parseInt(req.params.id), req.userId!);
+      res.json(award);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting for finance review' });
+    }
+  });
+
+  app.post('/api/lams/awards/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const { comments } = req.body;
+      const award = await compensationService.approveAward(parseInt(req.params.id), req.userId!, comments);
+      res.json(award);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving award' });
+    }
+  });
+
+  app.post('/api/lams/awards/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const award = await compensationService.closeAward(parseInt(req.params.id), req.userId!);
+      res.json(award);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing award' });
+    }
+  });
+
+  // Payment Routes
+  app.post('/api/lams/payments', authMiddleware, async (req, res) => {
+    try {
+      const payment = await compensationService.recordPayment(req.body, req.userId!);
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error recording payment' });
+    }
+  });
+
+  app.get('/api/lams/payments', authMiddleware, async (req, res) => {
+    try {
+      const { awardId, status } = req.query;
+      const filters: any = {};
+      if (awardId) filters.awardId = parseInt(awardId as string);
+      if (status) filters.status = status as string;
+      const payments = await storage.getPayments(filters);
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching payments' });
+    }
+  });
+
+  app.get('/api/lams/payments/:id', authMiddleware, async (req, res) => {
+    try {
+      const payment = await storage.getPayment(parseInt(req.params.id));
+      if (!payment) {
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching payment' });
+    }
+  });
+
+  app.get('/api/lams/awards/:id/payments', authMiddleware, async (req, res) => {
+    try {
+      const payments = await storage.getPaymentsByAward(parseInt(req.params.id));
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching payments' });
+    }
+  });
+
+  app.put('/api/lams/payments/:id', authMiddleware, async (req, res) => {
+    try {
+      const payment = await storage.updatePayment(parseInt(req.params.id), req.body);
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating payment' });
+    }
+  });
+
+  // ============================================================================
+  // Possession Routes
+  // ============================================================================
+
+  app.post('/api/lams/possession', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.schedulePossession(req.body, req.userId!);
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling possession' });
+    }
+  });
+
+  app.get('/api/lams/possession', authMiddleware, async (req, res) => {
+    try {
+      const { parcelId, status } = req.query;
+      const filters: any = {};
+      if (parcelId) filters.parcelId = parseInt(parcelId as string);
+      if (status) filters.status = status as string;
+      const possessions = await possessionService.getPossessions(filters);
+      res.json(possessions);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching possessions' });
+    }
+  });
+
+  app.get('/api/lams/possession/:id', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.getPossessionWithDetails(parseInt(req.params.id));
+      res.json(possession);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Possession not found' });
+    }
+  });
+
+  app.get('/api/lams/parcels/:id/possession', authMiddleware, async (req, res) => {
+    try {
+      const possession = await storage.getPossessionByParcel(parseInt(req.params.id));
+      if (!possession) {
+        return res.status(404).json({ message: 'Possession not found for this parcel' });
+      }
+      res.json(possession);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching possession' });
+    }
+  });
+
+  app.post('/api/lams/possession/:id/start', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.startPossession(parseInt(req.params.id), req.userId!);
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error starting possession' });
+    }
+  });
+
+  app.post('/api/lams/possession/:id/evidence', authMiddleware, async (req, res) => {
+    try {
+      const { mediaData } = req.body;
+      const possession = await possessionService.uploadEvidence(
+        parseInt(req.params.id),
+        mediaData,
+        req.userId!
+      );
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error uploading evidence' });
+    }
+  });
+
+  app.post('/api/lams/possession/:id/certificate', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.generateCertificate(parseInt(req.params.id), req.userId!);
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating certificate' });
+    }
+  });
+
+  app.post('/api/lams/possession/:id/update-registry', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.updateRegistry(parseInt(req.params.id), req.userId!);
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating registry' });
+    }
+  });
+
+  app.post('/api/lams/possession/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const possession = await possessionService.closePossession(parseInt(req.params.id), req.userId!);
+      res.json(possession);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing possession' });
+    }
+  });
+
+  app.get('/api/lams/possession/:id/media', authMiddleware, async (req, res) => {
+    try {
+      const media = await storage.getPossessionMedia(parseInt(req.params.id));
+      res.json(media);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching possession media' });
+    }
+  });
+
+  app.delete('/api/lams/possession/media/:id', authMiddleware, async (req, res) => {
+    try {
+      await storage.deletePossessionMedia(parseInt(req.params.id));
+      res.json({ message: 'Media deleted successfully' });
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error deleting media' });
+    }
+  });
+
+  // ============================================================================
+  // Reports Routes (Phase 5)
+  // ============================================================================
+
+  app.get('/api/reports/operational', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, district, taluka, status, type } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (district) filters.district = district as string;
+      if (taluka) filters.taluka = taluka as string;
+      if (status) filters.status = status as string;
+      if (type) filters.type = type as string;
+      
+      const report = await reportsService.generateOperationalReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating operational report' });
+    }
+  });
+
+  app.get('/api/reports/financial', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (status) filters.status = status as string;
+      
+      const report = await reportsService.generateFinancialReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating financial report' });
+    }
+  });
+
+  app.get('/api/reports/compliance', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const report = await reportsService.generateComplianceReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating compliance report' });
+    }
+  });
+
+  // ============================================================================
+  // Property Management System (PMS) API Routes
+  // ============================================================================
+
+  // Party routes
+  app.post('/api/property-management/parties', authMiddleware, async (req, res) => {
+    try {
+      const party = await partyService.createParty(req.body);
+      res.json(party);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating party' });
+    }
+  });
+
+  app.get('/api/property-management/parties', authMiddleware, async (req, res) => {
+    try {
+      const { name, phone, aadhaar } = req.query;
+      const filters: any = {};
+      if (name) filters.name = name as string;
+      if (phone) filters.phone = phone as string;
+      if (aadhaar) filters.aadhaar = aadhaar as string;
+      const parties = await partyService.getParties(filters);
+      res.json(parties);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching parties' });
+    }
+  });
+
+  app.get('/api/property-management/parties/:id', authMiddleware, async (req, res) => {
+    try {
+      const party = await partyService.getParty(parseInt(req.params.id));
+      res.json(party);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Party not found' });
+    }
+  });
+
+  app.put('/api/property-management/parties/:id', authMiddleware, async (req, res) => {
+    try {
+      const party = await partyService.updateParty(parseInt(req.params.id), req.body);
+      res.json(party);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating party' });
+    }
+  });
+
+  // Scheme routes
+  app.post('/api/property-management/schemes', authMiddleware, async (req, res) => {
+    try {
+      const scheme = await schemeService.createScheme(req.body, req.userId!);
+      res.json(scheme);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating scheme' });
+    }
+  });
+
+  app.get('/api/property-management/schemes', authMiddleware, async (req, res) => {
+    try {
+      const { status, createdBy } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (createdBy) filters.createdBy = parseInt(createdBy as string);
+      const schemes = await schemeService.getSchemes(filters);
+      res.json(schemes);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching schemes' });
+    }
+  });
+
+  app.get('/api/property-management/schemes/:id', authMiddleware, async (req, res) => {
+    try {
+      const scheme = await schemeService.getScheme(parseInt(req.params.id));
+      res.json(scheme);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Scheme not found' });
+    }
+  });
+
+  app.put('/api/property-management/schemes/:id', authMiddleware, async (req, res) => {
+    try {
+      const scheme = await schemeService.updateScheme(parseInt(req.params.id), req.body, req.userId!);
+      res.json(scheme);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating scheme' });
+    }
+  });
+
+  // Property routes
+  app.post('/api/property-management/properties', authMiddleware, async (req, res) => {
+    try {
+      const property = await propertyService.createProperty(req.body);
+      res.json(property);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating property' });
+    }
+  });
+
+  app.get('/api/property-management/properties', authMiddleware, async (req, res) => {
+    try {
+      const { schemeId, status } = req.query;
+      const filters: any = {};
+      if (schemeId) filters.schemeId = parseInt(schemeId as string);
+      if (status) filters.status = status as string;
+      const properties = await propertyService.getProperties(filters);
+      res.json(properties);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching properties' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id', authMiddleware, async (req, res) => {
+    try {
+      const property = await propertyService.getPropertyWithOwnership(parseInt(req.params.id));
+      res.json(property);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Property not found' });
+    }
+  });
+
+  app.put('/api/property-management/properties/:id', authMiddleware, async (req, res) => {
+    try {
+      const property = await propertyService.updateProperty(parseInt(req.params.id), req.body);
+      res.json(property);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating property' });
+    }
+  });
+
+  app.post('/api/property-management/properties/:id/ownership', authMiddleware, async (req, res) => {
+    try {
+      const ownership = await propertyService.addOwnership(parseInt(req.params.id), req.body);
+      res.json(ownership);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error adding ownership' });
+    }
+  });
+
+  // Application routes
+  app.post('/api/property-management/schemes/:id/applications', authMiddleware, async (req, res) => {
+    try {
+      const application = await schemeService.submitApplication({
+        ...req.body,
+        schemeId: parseInt(req.params.id),
+      });
+      res.json(application);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting application' });
+    }
+  });
+
+  app.get('/api/property-management/schemes/:id/applications', authMiddleware, async (req, res) => {
+    try {
+      const { status } = req.query;
+      const applications = await schemeService.getSchemeApplications(
+        parseInt(req.params.id),
+        status ? { status: status as string } : undefined
+      );
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching applications' });
+    }
+  });
+
+  app.post('/api/property-management/applications/:id/verify', authMiddleware, async (req, res) => {
+    try {
+      const application = await schemeService.verifyApplication(parseInt(req.params.id), req.userId!);
+      res.json(application);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error verifying application' });
+    }
+  });
+
+  app.post('/api/property-management/applications/:id/reject', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const application = await schemeService.rejectApplication(parseInt(req.params.id), reason || 'Not eligible', req.userId!);
+      res.json(application);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rejecting application' });
+    }
+  });
+
+  // Draw routes
+  app.post('/api/property-management/schemes/:id/draw', authMiddleware, async (req, res) => {
+    try {
+      const { selectedCount } = req.body;
+      if (!selectedCount || selectedCount <= 0) {
+        return res.status(400).json({ message: 'selectedCount is required and must be greater than 0' });
+      }
+      const drawResult = await drawService.conductDraw(parseInt(req.params.id), selectedCount, req.userId!);
+      res.json(drawResult);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error conducting draw' });
+    }
+  });
+
+  // Allotment routes
+  app.post('/api/property-management/allotments', authMiddleware, async (req, res) => {
+    try {
+      const allotment = await allotmentService.createAllotment(req.body, req.userId!);
+      res.json(allotment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating allotment' });
+    }
+  });
+
+  app.get('/api/property-management/allotments', authMiddleware, async (req, res) => {
+    try {
+      const { propertyId, partyId, status } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (status) filters.status = status as string;
+      const allotments = await storage.getAllotments(filters);
+      res.json(allotments);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching allotments' });
+    }
+  });
+
+  app.get('/api/property-management/allotments/:id', authMiddleware, async (req, res) => {
+    try {
+      const allotment = await allotmentService.getAllotmentWithDetails(parseInt(req.params.id));
+      res.json(allotment);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Allotment not found' });
+    }
+  });
+
+  app.post('/api/property-management/allotments/:id/issue', authMiddleware, async (req, res) => {
+    try {
+      const allotment = await allotmentService.issueAllotmentLetter(parseInt(req.params.id), req.userId!);
+      res.json(allotment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing allotment letter' });
+    }
+  });
+
+  app.post('/api/property-management/allotments/:id/accept', authMiddleware, async (req, res) => {
+    try {
+      const allotment = await allotmentService.acceptAllotment(parseInt(req.params.id));
+      res.json(allotment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error accepting allotment' });
+    }
+  });
+
+  app.post('/api/property-management/allotments/:id/cancel', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const allotment = await allotmentService.cancelAllotment(parseInt(req.params.id), reason || 'Cancelled', req.userId!);
+      res.json(allotment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error cancelling allotment' });
+    }
+  });
+
+  // Public verification endpoint for allotment letters
+  app.get('/api/public/property-management/allotments/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      // Find allotment by hash
+      const allotments = await storage.getAllotments({});
+      const allotment = allotments.find(a => a.hashSha256 === hash);
+      
+      if (!allotment) {
+        return res.status(404).json({ verified: false, message: 'Allotment not found' });
+      }
+
+      // Verify PDF integrity if file exists
+      let pdfVerified = false;
+      if (allotment.pdfPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const crypto = await import('crypto');
+        
+        const filePath = path.join(process.cwd(), allotment.pdfPath);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+          pdfVerified = actualHash === hash;
+        }
+      }
+
+      res.json({
+        verified: true,
+        pdfVerified,
+        allotment: {
+          letterNo: allotment.letterNo,
+          issueDate: allotment.issueDate,
+          status: allotment.status,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ verified: false, message: 'Verification failed' });
+    }
+  });
+
+  // Enhanced scheme routes
+  app.get('/api/property-management/schemes/:id', authMiddleware, async (req, res) => {
+    try {
+      const scheme = await schemeService.getSchemeWithDetails(parseInt(req.params.id));
+      res.json(scheme);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Scheme not found' });
+    }
+  });
+
+  // ============================================================================
+  // PMS Phase 3 API Routes (Property Lifecycle & Post-Allotment)
+  // ============================================================================
+
+  // Transfer routes
+  app.post('/api/property-management/properties/:id/transfers', authMiddleware, async (req, res) => {
+    try {
+      const transfer = await transferService.createTransfer({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating transfer' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/transfers', authMiddleware, async (req, res) => {
+    try {
+      const transfers = await transferService.getTransfers({ propertyId: parseInt(req.params.id) });
+      res.json(transfers);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching transfers' });
+    }
+  });
+
+  app.post('/api/property-management/transfers/:id/submit', authMiddleware, async (req, res) => {
+    try {
+      const transfer = await transferService.submitForReview(parseInt(req.params.id), req.userId!);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting transfer' });
+    }
+  });
+
+  app.post('/api/property-management/transfers/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const transfer = await transferService.approveTransfer(parseInt(req.params.id), req.userId!);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving transfer' });
+    }
+  });
+
+  app.post('/api/property-management/transfers/:id/complete', authMiddleware, async (req, res) => {
+    try {
+      const transfer = await transferService.completeTransfer(parseInt(req.params.id), req.userId!);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing transfer' });
+    }
+  });
+
+  app.post('/api/property-management/transfers/:id/reject', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const transfer = await transferService.rejectTransfer(parseInt(req.params.id), reason || 'Rejected', req.userId!);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rejecting transfer' });
+    }
+  });
+
+  // Mortgage routes
+  app.post('/api/property-management/properties/:id/mortgages', authMiddleware, async (req, res) => {
+    try {
+      const mortgage = await mortgageService.createMortgage({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(mortgage);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating mortgage' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/mortgages', authMiddleware, async (req, res) => {
+    try {
+      const mortgages = await mortgageService.getMortgages({ propertyId: parseInt(req.params.id) });
+      res.json(mortgages);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching mortgages' });
+    }
+  });
+
+  app.post('/api/property-management/mortgages/:id/submit', authMiddleware, async (req, res) => {
+    try {
+      const mortgage = await mortgageService.submitForReview(parseInt(req.params.id), req.userId!);
+      res.json(mortgage);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting mortgage' });
+    }
+  });
+
+  app.post('/api/property-management/mortgages/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const mortgage = await mortgageService.approveMortgage(parseInt(req.params.id), req.userId!);
+      res.json(mortgage);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving mortgage' });
+    }
+  });
+
+  app.post('/api/property-management/mortgages/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const mortgage = await mortgageService.closeMortgage(parseInt(req.params.id), req.userId!);
+      res.json(mortgage);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing mortgage' });
+    }
+  });
+
+  app.post('/api/property-management/mortgages/:id/reject', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const mortgage = await mortgageService.rejectMortgage(parseInt(req.params.id), reason || 'Rejected', req.userId!);
+      res.json(mortgage);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rejecting mortgage' });
+    }
+  });
+
+  // Modification routes
+  app.post('/api/property-management/properties/:id/modifications', authMiddleware, async (req, res) => {
+    try {
+      const modification = await modificationService.createModification({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(modification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating modification' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/modifications', authMiddleware, async (req, res) => {
+    try {
+      const modifications = await modificationService.getModifications({ propertyId: parseInt(req.params.id) });
+      res.json(modifications);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching modifications' });
+    }
+  });
+
+  app.post('/api/property-management/modifications/:id/submit', authMiddleware, async (req, res) => {
+    try {
+      const modification = await modificationService.submitForReview(parseInt(req.params.id), req.userId!);
+      res.json(modification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting modification' });
+    }
+  });
+
+  app.post('/api/property-management/modifications/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const modification = await modificationService.approveModification(parseInt(req.params.id), req.userId!);
+      res.json(modification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving modification' });
+    }
+  });
+
+  app.post('/api/property-management/modifications/:id/reject', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const modification = await modificationService.rejectModification(parseInt(req.params.id), reason || 'Rejected', req.userId!);
+      res.json(modification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rejecting modification' });
+    }
+  });
+
+  // NOC routes
+  app.post('/api/property-management/properties/:id/nocs', authMiddleware, async (req, res) => {
+    try {
+      const noc = await nocService.createNOC({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(noc);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating NOC' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/nocs', authMiddleware, async (req, res) => {
+    try {
+      const { type, status } = req.query;
+      const filters: any = { propertyId: parseInt(req.params.id) };
+      if (type) filters.type = type as string;
+      if (status) filters.status = status as string;
+      const nocs = await nocService.getNOCs(filters);
+      res.json(nocs);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching NOCs' });
+    }
+  });
+
+  app.post('/api/property-management/nocs/:id/submit', authMiddleware, async (req, res) => {
+    try {
+      const noc = await nocService.submitForReview(parseInt(req.params.id), req.userId!);
+      res.json(noc);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting NOC' });
+    }
+  });
+
+  app.post('/api/property-management/nocs/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const noc = await nocService.approveNOC(parseInt(req.params.id), req.userId!);
+      res.json(noc);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving NOC' });
+    }
+  });
+
+  app.post('/api/property-management/nocs/:id/issue', authMiddleware, async (req, res) => {
+    try {
+      const noc = await nocService.issueNOC(parseInt(req.params.id), req.userId!);
+      res.json(noc);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing NOC' });
+    }
+  });
+
+  // Conveyance Deed routes
+  app.post('/api/property-management/properties/:id/conveyance', authMiddleware, async (req, res) => {
+    try {
+      const deed = await conveyanceService.createConveyanceDeed({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(deed);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating conveyance deed' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/conveyance-deeds', authMiddleware, async (req, res) => {
+    try {
+      const deeds = await conveyanceService.getConveyanceDeeds({ propertyId: parseInt(req.params.id) });
+      res.json(deeds);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching conveyance deeds' });
+    }
+  });
+
+  app.post('/api/property-management/conveyance-deeds/:id/generate', authMiddleware, async (req, res) => {
+    try {
+      const deed = await conveyanceService.generateDeedPDF(parseInt(req.params.id), req.userId!);
+      res.json(deed);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating deed' });
+    }
+  });
+
+  // Phase 6: Construction Services & Certificates Routes
+
+  // Demarcation Request routes
+  app.post('/api/property-management/properties/:id/demarcation', authMiddleware, async (req, res) => {
+    try {
+      const request = await demarcationService.createDemarcationRequest({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating demarcation request' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/demarcation', authMiddleware, async (req, res) => {
+    try {
+      const requests = await demarcationService.getDemarcationRequests({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching demarcation requests' });
+    }
+  });
+
+  app.post('/api/property-management/demarcation/:id/schedule-inspection', authMiddleware, async (req, res) => {
+    try {
+      const request = await demarcationService.scheduleInspection(
+        parseInt(req.params.id),
+        new Date(req.body.scheduledAt),
+        req.body.inspectedBy,
+        req.userId!
+      );
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/demarcation/:id/complete-inspection', authMiddleware, async (req, res) => {
+    try {
+      const request = await demarcationService.completeInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/demarcation/:id/issue-certificate', authMiddleware, async (req, res) => {
+    try {
+      const request = await demarcationService.issueCertificate(parseInt(req.params.id), req.userId!);
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing certificate' });
+    }
+  });
+
+  // DPC Request routes
+  app.post('/api/property-management/properties/:id/dpc', authMiddleware, async (req, res) => {
+    try {
+      const request = await dpcService.createDpcRequest({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating DPC request' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/dpc', authMiddleware, async (req, res) => {
+    try {
+      const requests = await dpcService.getDpcRequests({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching DPC requests' });
+    }
+  });
+
+  app.post('/api/property-management/dpc/:id/update-checklist', authMiddleware, async (req, res) => {
+    try {
+      const request = await dpcService.updateChecklist(
+        parseInt(req.params.id),
+        req.body.checklistJson,
+        req.userId!
+      );
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating checklist' });
+    }
+  });
+
+  app.post('/api/property-management/dpc/:id/schedule-inspection', authMiddleware, async (req, res) => {
+    try {
+      const request = await dpcService.scheduleInspection(
+        parseInt(req.params.id),
+        new Date(req.body.scheduledAt),
+        req.body.inspectedBy,
+        req.userId!
+      );
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/dpc/:id/complete-inspection', authMiddleware, async (req, res) => {
+    try {
+      const request = await dpcService.completeInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/dpc/:id/issue-certificate', authMiddleware, async (req, res) => {
+    try {
+      const request = await dpcService.issueCertificate(parseInt(req.params.id), req.userId!);
+      res.json(request);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing certificate' });
+    }
+  });
+
+  // Occupancy Certificate routes
+  app.post('/api/property-management/properties/:id/occupancy-certificate', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.createOccupancyCertificateRequest({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating OC request' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/occupancy-certificates', authMiddleware, async (req, res) => {
+    try {
+      const certificates = await certificateService.getOccupancyCertificates({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(certificates);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching occupancy certificates' });
+    }
+  });
+
+  app.post('/api/property-management/occupancy-certificate/:id/update-checklist', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.updateOCChecklist(
+        parseInt(req.params.id),
+        req.body.checklistJson,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating checklist' });
+    }
+  });
+
+  app.post('/api/property-management/occupancy-certificate/:id/schedule-inspection', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.scheduleOCInspection(
+        parseInt(req.params.id),
+        new Date(req.body.scheduledAt),
+        req.body.inspectedBy,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/occupancy-certificate/:id/complete-inspection', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.completeOCInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/occupancy-certificate/:id/issue', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.issueOccupancyCertificate(parseInt(req.params.id), req.userId!);
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing certificate' });
+    }
+  });
+
+  // Completion Certificate routes
+  app.post('/api/property-management/properties/:id/completion-certificate', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.createCompletionCertificateRequest({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating CC request' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/completion-certificates', authMiddleware, async (req, res) => {
+    try {
+      const certificates = await certificateService.getCompletionCertificates({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(certificates);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching completion certificates' });
+    }
+  });
+
+  app.post('/api/property-management/completion-certificate/:id/update-checklist', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.updateCCChecklist(
+        parseInt(req.params.id),
+        req.body.checklistJson,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating checklist' });
+    }
+  });
+
+  app.post('/api/property-management/completion-certificate/:id/schedule-inspection', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.scheduleCCInspection(
+        parseInt(req.params.id),
+        new Date(req.body.scheduledAt),
+        req.body.inspectedBy,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/completion-certificate/:id/complete-inspection', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.completeCCInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/completion-certificate/:id/issue', authMiddleware, async (req, res) => {
+    try {
+      const certificate = await certificateService.issueCompletionCertificate(parseInt(req.params.id), req.userId!);
+      res.json(certificate);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing certificate' });
+    }
+  });
+
+  // Deviation routes
+  app.post('/api/property-management/properties/:id/deviations', authMiddleware, async (req, res) => {
+    try {
+      const deviation = await deviationService.recordDeviation({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(deviation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error recording deviation' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/deviations', authMiddleware, async (req, res) => {
+    try {
+      const deviations = await deviationService.getDeviations({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+        deviationType: req.query.deviationType as string,
+      });
+      res.json(deviations);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching deviations' });
+    }
+  });
+
+  app.post('/api/property-management/deviations/:id/levy-fee', authMiddleware, async (req, res) => {
+    try {
+      const deviation = await deviationService.levyFee(
+        parseInt(req.params.id),
+        req.body.fee,
+        req.body.penalty,
+        req.userId!
+      );
+      res.json(deviation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error levying fee' });
+    }
+  });
+
+  app.post('/api/property-management/deviations/:id/record-rectification', authMiddleware, async (req, res) => {
+    try {
+      const deviation = await deviationService.recordRectification(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(deviation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error recording rectification' });
+    }
+  });
+
+  app.post('/api/property-management/deviations/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const deviation = await deviationService.approveRectification(parseInt(req.params.id), req.userId!);
+      res.json(deviation);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving rectification' });
+    }
+  });
+
+  // Phase 7: Water & Sewerage Connections routes
+  // Water Connection routes
+  app.post('/api/property-management/properties/:id/water-connection', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.applyForConnection({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error applying for water connection' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/water-connection', authMiddleware, async (req, res) => {
+    try {
+      const connections = await waterConnectionService.getConnections({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(connections);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching water connections' });
+    }
+  });
+
+  app.get('/api/property-management/water-connections/:id', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.getConnection(parseInt(req.params.id));
+      res.json(connection);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Water connection not found' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/:id/inspection', authMiddleware, async (req, res) => {
+    try {
+      const inspection = await waterConnectionService.scheduleInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(inspection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/inspections/:id/complete', authMiddleware, async (req, res) => {
+    try {
+      const inspection = await waterConnectionService.completeInspection(
+        parseInt(req.params.id),
+        req.body.result,
+        req.body.remarks,
+        req.body.photos,
+        req.userId!
+      );
+      res.json(inspection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/:id/sanction', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.sanctionConnection(parseInt(req.params.id), req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error sanctioning connection' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/:id/activate', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.activateConnection(
+        parseInt(req.params.id),
+        req.body.meterNo,
+        req.body.meterIntegrationData,
+        req.userId!
+      );
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error activating connection' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/:id/renew', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.renewConnection(parseInt(req.params.id), req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error renewing connection' });
+    }
+  });
+
+  app.post('/api/property-management/water-connections/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const connection = await waterConnectionService.closeConnection(
+        parseInt(req.params.id),
+        req.body.reason,
+        req.userId!
+      );
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing connection' });
+    }
+  });
+
+  // Sewerage Connection routes
+  app.post('/api/property-management/properties/:id/sewerage-connection', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.applyForConnection({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error applying for sewerage connection' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/sewerage-connection', authMiddleware, async (req, res) => {
+    try {
+      const connections = await sewerageConnectionService.getConnections({
+        propertyId: parseInt(req.params.id),
+        status: req.query.status as string,
+      });
+      res.json(connections);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching sewerage connections' });
+    }
+  });
+
+  app.get('/api/property-management/sewerage-connections/:id', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.getConnection(parseInt(req.params.id));
+      res.json(connection);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Sewerage connection not found' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/:id/inspection', authMiddleware, async (req, res) => {
+    try {
+      const inspection = await sewerageConnectionService.scheduleInspection(
+        parseInt(req.params.id),
+        req.body,
+        req.userId!
+      );
+      res.json(inspection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling inspection' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/inspections/:id/complete', authMiddleware, async (req, res) => {
+    try {
+      const inspection = await sewerageConnectionService.completeInspection(
+        parseInt(req.params.id),
+        req.body.result,
+        req.body.remarks,
+        req.body.photos,
+        req.userId!
+      );
+      res.json(inspection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing inspection' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/:id/sanction', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.sanctionConnection(parseInt(req.params.id), req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error sanctioning connection' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/:id/activate', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.activateConnection(parseInt(req.params.id), req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error activating connection' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/:id/renew', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.renewConnection(parseInt(req.params.id), req.userId!);
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error renewing connection' });
+    }
+  });
+
+  app.post('/api/property-management/sewerage-connections/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const connection = await sewerageConnectionService.closeConnection(
+        parseInt(req.params.id),
+        req.body.reason,
+        req.userId!
+      );
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing connection' });
+    }
+  });
+
+  // ============================================================================
+  // Phase 8: Property Registration Integration
+  // ============================================================================
+
+  // Registration Case routes
+  app.post('/api/property-management/properties/:id/registration', authMiddleware, async (req, res) => {
+    try {
+      const registrationCase = await registrationService.createRegistrationCase({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(registrationCase);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating registration case' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/registration', authMiddleware, async (req, res) => {
+    try {
+      const cases = await registrationService.getRegistrationCases({ propertyId: parseInt(req.params.id) });
+      res.json(cases);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error fetching registration cases' });
+    }
+  });
+
+  app.get('/api/property-management/registration/:id', authMiddleware, async (req, res) => {
+    try {
+      const registrationCase = await registrationService.getRegistrationCaseWithDetails(parseInt(req.params.id));
+      res.json(registrationCase);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error fetching registration case' });
+    }
+  });
+
+  // Valuation routes
+  app.post('/api/property-management/registration/:id/valuation', authMiddleware, async (req, res) => {
+    try {
+      const { circleRate, multipliers } = req.body;
+      const result = await registrationService.calculateValuation(
+        parseInt(req.params.id),
+        circleRate,
+        multipliers || {}
+      );
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error calculating valuation' });
+    }
+  });
+
+  // KYC Verification routes
+  app.post('/api/property-management/registration/:id/kyc', authMiddleware, async (req, res) => {
+    try {
+      const { partyId, verificationType, documentNumber } = req.body;
+      const result = await registrationService.verifyKYC(
+        parseInt(req.params.id),
+        partyId,
+        verificationType,
+        documentNumber,
+        req.userId!
+      );
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error verifying KYC' });
+    }
+  });
+
+  // Encumbrance routes
+  app.post('/api/property-management/registration/:id/encumbrance', authMiddleware, async (req, res) => {
+    try {
+      const encumbrance = await registrationService.generateEncumbranceCertificate(
+        parseInt(req.params.id),
+        req.userId!
+      );
+      res.json(encumbrance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating encumbrance certificate' });
+    }
+  });
+
+  // SRO Slot routes
+  app.get('/api/property-management/sro/slots', authMiddleware, async (req, res) => {
+    try {
+      const { sroOffice, startDate, endDate } = req.query;
+      const slots = await sroService.getAvailableSlots(
+        sroOffice as string,
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      res.json(slots);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error fetching slots' });
+    }
+  });
+
+  app.post('/api/property-management/registration/:id/slot', authMiddleware, async (req, res) => {
+    try {
+      const { slotId } = req.body;
+      const slot = await registrationService.bookSlot(
+        parseInt(req.params.id),
+        slotId,
+        req.userId!
+      );
+      res.json(slot);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error booking slot' });
+    }
+  });
+
+  app.post('/api/property-management/registration/:id/reschedule-slot', authMiddleware, async (req, res) => {
+    try {
+      const { oldSlotId, newSlotId } = req.body;
+      const result = await sroService.rescheduleSlot(
+        oldSlotId,
+        newSlotId,
+        parseInt(req.params.id),
+        req.userId!
+      );
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rescheduling slot' });
+    }
+  });
+
+  // Deed routes
+  app.post('/api/property-management/registration/:id/prepare-deed', authMiddleware, async (req, res) => {
+    try {
+      const deed = await registrationService.prepareDeed(parseInt(req.params.id), req.userId!);
+      res.json(deed);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error preparing deed' });
+    }
+  });
+
+  // Registration completion route
+  app.post('/api/property-management/registration/:id/register', authMiddleware, async (req, res) => {
+    try {
+      const { registeredDeedPdfPath } = req.body;
+      const registrationCase = await registrationService.completeRegistration(
+        parseInt(req.params.id),
+        registeredDeedPdfPath,
+        req.userId!
+      );
+      res.json(registrationCase);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error completing registration' });
+    }
+  });
+
+  // Get all registration cases
+  app.get('/api/property-management/registration', authMiddleware, async (req, res) => {
+    try {
+      const { status, deedType } = req.query;
+      const cases = await registrationService.getRegistrationCases({
+        status: status as string,
+        deedType: deedType as string,
+      });
+      res.json(cases);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error fetching registration cases' });
+    }
+  });
+
+  // ============================================================================
+  // Phase 10: Analytics, Dashboards & Reporting
+  // ============================================================================
+
+  // Analytics routes
+  app.get('/api/property-management/analytics/dashboard-summary', authMiddleware, async (req, res) => {
+    try {
+      const summary = await pmsAnalyticsService.getDashboardSummary(req.userId);
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching dashboard summary' });
+    }
+  });
+
+  app.get('/api/property-management/analytics/schemes', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, schemeId } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (schemeId) filters.schemeId = parseInt(schemeId as string);
+      
+      const analytics = await pmsAnalyticsService.getSchemeFunnelAnalytics(filters);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching scheme analytics' });
+    }
+  });
+
+  app.get('/api/property-management/analytics/draw-statistics', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, schemeId } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (schemeId) filters.schemeId = parseInt(schemeId as string);
+      
+      const statistics = await pmsAnalyticsService.getDrawStatistics(filters);
+      res.json(statistics);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching draw statistics' });
+    }
+  });
+
+  app.get('/api/property-management/analytics/receivables', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const analytics = await pmsAnalyticsService.getReceivablesAnalytics(filters);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching receivables analytics' });
+    }
+  });
+
+  app.get('/api/property-management/analytics/sla', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const analytics = await pmsAnalyticsService.getSLAAnalytics(filters);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching SLA analytics' });
+    }
+  });
+
+  app.get('/api/property-management/analytics/registration-volumes', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const volumes = await pmsAnalyticsService.getRegistrationVolumes(filters);
+      res.json(volumes);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error fetching registration volumes' });
+    }
+  });
+
+  // Reports routes
+  app.get('/api/property-management/reports/operational', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, schemeId, status } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (schemeId) filters.schemeId = parseInt(schemeId as string);
+      if (status) filters.status = status as string;
+      
+      const report = await pmsReportsService.generateOperationalReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating operational report' });
+    }
+  });
+
+  app.get('/api/property-management/reports/financial', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (status) filters.status = status as string;
+      
+      const report = await pmsReportsService.generateFinancialReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating financial report' });
+    }
+  });
+
+  app.get('/api/property-management/reports/spatial', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const report = await pmsReportsService.generateSpatialReport(filters);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating spatial report' });
+    }
+  });
+
+  app.get('/api/property-management/reports/operational/export', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, schemeId, status } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (schemeId) filters.schemeId = parseInt(schemeId as string);
+      if (status) filters.status = status as string;
+      
+      const report = await pmsReportsService.generateOperationalReport(filters);
+      const csv = await pmsReportsService.exportReportToCSV(report, 'operational');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="operational-report.csv"');
+      res.send(csv);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error exporting operational report' });
+    }
+  });
+
+  app.get('/api/property-management/reports/financial/export', authMiddleware, async (req, res) => {
+    try {
+      const { startDate, endDate, status } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (status) filters.status = status as string;
+      
+      const report = await pmsReportsService.generateFinancialReport(filters);
+      const csv = await pmsReportsService.exportReportToCSV(report, 'financial');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="financial-report.csv"');
+      res.send(csv);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error exporting financial report' });
+    }
+  });
+
+  // Public verification endpoints
+  app.get('/api/public/property-management/nocs/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      const nocs = await storage.getNOCs({});
+      const noc = nocs.find(n => n.hashSha256 === hash);
+      
+      if (!noc) {
+        return res.status(404).json({ verified: false, message: 'NOC not found' });
+      }
+
+      let pdfVerified = false;
+      if (noc.pdfPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const crypto = await import('crypto');
+        const filePath = path.join(process.cwd(), noc.pdfPath);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+          pdfVerified = actualHash === hash;
+        }
+      }
+
+      res.json({
+        verified: true,
+        pdfVerified,
+        noc: {
+          type: noc.type,
+          issuedAt: noc.issuedAt,
+          status: noc.status,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ verified: false, message: 'Verification failed' });
+    }
+  });
+
+  app.get('/api/public/property-management/conveyance-deeds/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      const deeds = await storage.getConveyanceDeeds({});
+      const deed = deeds.find(d => d.hashSha256 === hash);
+      
+      if (!deed) {
+        return res.status(404).json({ verified: false, message: 'Conveyance deed not found' });
+      }
+
+      let pdfVerified = false;
+      if (deed.pdfPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const crypto = await import('crypto');
+        const filePath = path.join(process.cwd(), deed.pdfPath);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+          pdfVerified = actualHash === hash;
+        }
+      }
+
+      res.json({
+        verified: true,
+        pdfVerified,
+        deed: {
+          deedNo: deed.deedNo,
+          deedDate: deed.deedDate,
+          status: deed.status,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ verified: false, message: 'Verification failed' });
+    }
+  });
+
+  // ============================================================================
+  // PMS Phase 4 API Routes (Payments & Ledgers)
+  // ============================================================================
+
+  // Demand Note routes
+  app.post('/api/property-management/properties/:id/demand-notes', authMiddleware, async (req, res) => {
+    try {
+      const demandNote = await demandNoteService.createDemandNote({
+        ...req.body,
+        propertyId: parseInt(req.params.id),
+      }, req.userId!);
+      res.json(demandNote);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating demand note' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/demand-notes', authMiddleware, async (req, res) => {
+    try {
+      const { partyId, status } = req.query;
+      const filters: any = { propertyId: parseInt(req.params.id) };
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (status) filters.status = status as string;
+      const demandNotes = await demandNoteService.getDemandNotes(filters);
+      res.json(demandNotes);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching demand notes' });
+    }
+  });
+
+  app.post('/api/property-management/demand-notes/:id/issue', authMiddleware, async (req, res) => {
+    try {
+      const demandNote = await demandNoteService.issueDemandNote(parseInt(req.params.id), req.userId!);
+      res.json(demandNote);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error issuing demand note' });
+    }
+  });
+
+  app.post('/api/property-management/demand-notes/:id/mark-overdue', authMiddleware, async (req, res) => {
+    try {
+      const demandNote = await demandNoteService.markOverdue(parseInt(req.params.id));
+      res.json(demandNote);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error marking demand note as overdue' });
+    }
+  });
+
+  // Payment routes
+  app.post('/api/property-management/payments', authMiddleware, async (req, res) => {
+    try {
+      const payment = await paymentService.processPayment(req.body);
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error processing payment' });
+    }
+  });
+
+  app.get('/api/property-management/payments', authMiddleware, async (req, res) => {
+    try {
+      const { propertyId, partyId, demandNoteId, status } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (demandNoteId) filters.demandNoteId = parseInt(demandNoteId as string);
+      if (status) filters.status = status as string;
+      const payments = await paymentService.getPayments(filters);
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching payments' });
+    }
+  });
+
+  app.post('/api/property-management/payments/:id/confirm', authMiddleware, async (req, res) => {
+    try {
+      const payment = await paymentService.confirmPayment(parseInt(req.params.id), req.body);
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error confirming payment' });
+    }
+  });
+
+  app.post('/api/property-management/payments/:id/refund', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const payment = await paymentService.refundPayment(parseInt(req.params.id), reason || 'Refund requested');
+      res.json(payment);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error refunding payment' });
+    }
+  });
+
+  // Receipt routes
+  app.post('/api/property-management/payments/:id/receipt', authMiddleware, async (req, res) => {
+    try {
+      const receipt = await receiptService.generateReceipt(parseInt(req.params.id), req.userId!);
+      res.json(receipt);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error generating receipt' });
+    }
+  });
+
+  app.get('/api/property-management/receipts', authMiddleware, async (req, res) => {
+    try {
+      const { paymentId } = req.query;
+      const filters: any = {};
+      if (paymentId) filters.paymentId = parseInt(paymentId as string);
+      const receipts = await receiptService.getReceipts(filters);
+      res.json(receipts);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching receipts' });
+    }
+  });
+
+  // Refund routes
+  app.post('/api/property-management/refunds', authMiddleware, async (req, res) => {
+    try {
+      const refund = await refundService.createRefund(req.body, req.userId!);
+      res.json(refund);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating refund' });
+    }
+  });
+
+  app.get('/api/property-management/refunds', authMiddleware, async (req, res) => {
+    try {
+      const { propertyId, partyId, paymentId, status } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (paymentId) filters.paymentId = parseInt(paymentId as string);
+      if (status) filters.status = status as string;
+      const refunds = await refundService.getRefunds(filters);
+      res.json(refunds);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching refunds' });
+    }
+  });
+
+  app.post('/api/property-management/refunds/:id/approve', authMiddleware, async (req, res) => {
+    try {
+      const refund = await refundService.approveRefund(parseInt(req.params.id), req.userId!);
+      res.json(refund);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error approving refund' });
+    }
+  });
+
+  app.post('/api/property-management/refunds/:id/process', authMiddleware, async (req, res) => {
+    try {
+      const refund = await refundService.processRefund(parseInt(req.params.id));
+      res.json(refund);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error processing refund' });
+    }
+  });
+
+  app.post('/api/property-management/refunds/:id/reject', authMiddleware, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const refund = await refundService.rejectRefund(parseInt(req.params.id), reason || 'Rejected', req.userId!);
+      res.json(refund);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error rejecting refund' });
+    }
+  });
+
+  // Ledger routes
+  app.get('/api/property-management/properties/:id/ledger', authMiddleware, async (req, res) => {
+    try {
+      const { partyId } = req.query;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+      const ledger = await ledgerService.getPropertyLedger(parseInt(req.params.id), parseInt(partyId as string));
+      res.json(ledger);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching ledger' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/balance', authMiddleware, async (req, res) => {
+    try {
+      const { partyId } = req.query;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+      const balance = await ledgerService.getCurrentBalance(parseInt(req.params.id), parseInt(partyId as string));
+      res.json({ balance });
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching balance' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/ledger-summary', authMiddleware, async (req, res) => {
+    try {
+      const { partyId } = req.query;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+      const summary = await ledgerService.getLedgerSummary(parseInt(req.params.id), parseInt(partyId as string));
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching ledger summary' });
+    }
+  });
+
+  app.get('/api/property-management/properties/:id/ledger/export', authMiddleware, async (req, res) => {
+    try {
+      const { partyId } = req.query;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+      const csv = await ledgerService.exportLedgerToCSV(parseInt(req.params.id), parseInt(partyId as string));
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="ledger-${req.params.id}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      res.status(500).json({ message: 'Error exporting ledger' });
+    }
+  });
+
+  app.post('/api/property-management/properties/:id/reconcile', authMiddleware, async (req, res) => {
+    try {
+      const { partyId, accountsData } = req.body;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+      const result = await ledgerService.reconcileLedger(parseInt(req.params.id), partyId, accountsData || []);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: 'Error reconciling ledger' });
+    }
+  });
+
+  // Public verification endpoints
+  app.get('/api/public/property-management/demand-notes/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      const demandNotes = await storage.getDemandNotes({});
+      const demandNote = demandNotes.find(d => d.hashSha256 === hash);
+      
+      if (!demandNote) {
+        return res.status(404).json({ verified: false, message: 'Demand note not found' });
+      }
+
+      let pdfVerified = false;
+      if (demandNote.pdfPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const crypto = await import('crypto');
+        const filePath = path.join(process.cwd(), demandNote.pdfPath);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+          pdfVerified = actualHash === hash;
+        }
+      }
+
+      res.json({
+        verified: true,
+        pdfVerified,
+        demandNote: {
+          noteNo: demandNote.noteNo,
+          amount: demandNote.amount,
+          dueDate: demandNote.dueDate,
+          status: demandNote.status,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ verified: false, message: 'Verification failed' });
+    }
+  });
+
+  app.get('/api/public/property-management/receipts/verify/:hash', async (req, res) => {
+    try {
+      const { hash } = req.params;
+      const receipts = await storage.getReceipts({});
+      const receipt = receipts.find(r => r.hashSha256 === hash);
+      
+      if (!receipt) {
+        return res.status(404).json({ verified: false, message: 'Receipt not found' });
+      }
+
+      let pdfVerified = false;
+      if (receipt.pdfPath) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const crypto = await import('crypto');
+        const filePath = path.join(process.cwd(), receipt.pdfPath);
+        if (fs.existsSync(filePath)) {
+          const fileBuffer = fs.readFileSync(filePath);
+          const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+          pdfVerified = actualHash === hash;
+        }
+      }
+
+      res.json({
+        verified: true,
+        pdfVerified,
+        receipt: {
+          receiptNo: receipt.receiptNo,
+          issuedAt: receipt.issuedAt,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ verified: false, message: 'Verification failed' });
+    }
+  });
+
+  // ============================================================================
+  // PMS Phase 5 API Routes (Citizen Services Portal)
+  // ============================================================================
+
+  // Public property search and OTP
+  app.post('/api/public/property-management/properties/search/otp', async (req, res) => {
+    try {
+      const { propertyRef, phone } = req.body;
+      if (!propertyRef || !phone) {
+        return res.status(400).json({ message: 'propertyRef and phone are required' });
+      }
+      const result = await citizenService.generateOTP(propertyRef, phone);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: 'Error generating OTP' });
+    }
+  });
+
+  app.post('/api/public/property-management/properties/search/verify', async (req, res) => {
+    try {
+      const { propertyRef, phone, otp } = req.body;
+      if (!propertyRef || !phone || !otp) {
+        return res.status(400).json({ message: 'propertyRef, phone, and otp are required' });
+      }
+      const result = await citizenService.verifyOTP(propertyRef, phone, otp);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: 'Error verifying OTP' });
+    }
+  });
+
+  // Property 360 view
+  app.get('/api/public/property-management/properties/:id/360', async (req, res) => {
+    try {
+      const { accessToken } = req.query;
+      const property360 = await citizenService.getProperty360(
+        parseInt(req.params.id),
+        accessToken as string | undefined
+      );
+      res.json(property360);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Property not found' });
+    }
+  });
+
+  // Passbook download
+  app.get('/api/public/property-management/properties/:id/passbook', async (req, res) => {
+    try {
+      const { partyId, accessToken } = req.query;
+      if (!partyId) {
+        return res.status(400).json({ message: 'partyId is required' });
+      }
+
+      // Verify access token if provided
+      if (accessToken) {
+        // Access token verification would be done here
+        // For now, proceed with generation
+      }
+
+      const { filePath, hash } = await passbookService.generatePassbook(
+        parseInt(req.params.id),
+        parseInt(partyId as string)
+      );
+
+      const relativePath = path.relative(process.cwd(), filePath);
+      res.json({
+        filePath: relativePath,
+        downloadUrl: `/${relativePath.replace(/\\/g, '/')}`,
+        hash,
+      });
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Error generating passbook' });
+    }
+  });
+
+  // Service requests
+  app.post('/api/public/property-management/service-requests', async (req, res) => {
+    try {
+      const serviceRequest = await serviceRequestService.createServiceRequest(req.body);
+      res.json(serviceRequest);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating service request' });
+    }
+  });
+
+  app.get('/api/public/property-management/service-requests/:refNo', async (req, res) => {
+    try {
+      const serviceRequest = await serviceRequestService.getServiceRequest(req.params.refNo);
+      res.json(serviceRequest);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Service request not found' });
+    }
+  });
+
+  app.get('/api/public/property-management/service-requests', async (req, res) => {
+    try {
+      const { propertyId, partyId, status, requestType } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (status) filters.status = status as string;
+      if (requestType) filters.requestType = requestType as string;
+      const requests = await serviceRequestService.getServiceRequests(filters);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching service requests' });
+    }
+  });
+
+  // Officer endpoints for service request management
+  app.get('/api/property-management/service-requests', authMiddleware, async (req, res) => {
+    try {
+      const { propertyId, partyId, status, requestType } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (status) filters.status = status as string;
+      if (requestType) filters.requestType = requestType as string;
+      const requests = await serviceRequestService.getServiceRequests(filters);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching service requests' });
+    }
+  });
+
+  app.post('/api/property-management/service-requests/:id/assign', authMiddleware, async (req, res) => {
+    try {
+      const serviceRequest = await serviceRequestService.assignServiceRequest(
+        parseInt(req.params.id),
+        req.userId!
+      );
+      res.json(serviceRequest);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error assigning service request' });
+    }
+  });
+
+  app.post('/api/property-management/service-requests/:id/update-status', authMiddleware, async (req, res) => {
+    try {
+      const { status, resolution } = req.body;
+      const serviceRequest = await serviceRequestService.updateServiceRequestStatus(
+        parseInt(req.params.id),
+        status,
+        resolution,
+        req.userId
+      );
+      res.json(serviceRequest);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating service request' });
+    }
+  });
+
+  // Document download (for documents linked to properties)
+  app.get('/api/public/property-management/documents/:id/download', async (req, res) => {
+    try {
+      const { accessToken } = req.query;
+      // In production, verify access token and check permissions
+      
+      // Get document path from storage
+      // This would integrate with existing document management
+      // For now, return a placeholder
+      res.json({ message: 'Document download endpoint - to be integrated with document management system' });
+    } catch (error) {
+      res.status(404).json({ message: 'Document not found' });
+    }
+  });
+
+  // Phase 9: Grievance routes
+  app.post('/api/property-management/grievances', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.createGrievance(req.body, req.userId);
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating grievance' });
+    }
+  });
+
+  app.get('/api/property-management/grievances', authMiddleware, async (req, res) => {
+    try {
+      const { partyId, propertyId, status, category, assignedTo } = req.query;
+      const filters: any = {};
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (status) filters.status = status as string;
+      if (category) filters.category = category as string;
+      if (assignedTo) filters.assignedTo = parseInt(assignedTo as string);
+      const grievances = await grievanceService.getGrievances(filters);
+      res.json(grievances);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching grievances' });
+    }
+  });
+
+  app.get('/api/property-management/grievances/:id', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.getGrievance(parseInt(req.params.id));
+      res.json(grievance);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Grievance not found' });
+    }
+  });
+
+  app.get('/api/property-management/grievances/ref/:refNo', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.getGrievanceByRefNo(req.params.refNo);
+      res.json(grievance);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Grievance not found' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/assign', authMiddleware, async (req, res) => {
+    try {
+      const { assignedTo } = req.body;
+      if (!assignedTo) {
+        return res.status(400).json({ message: 'assignedTo is required' });
+      }
+      const grievance = await grievanceService.assignGrievance(
+        parseInt(req.params.id),
+        assignedTo,
+        req.userId!
+      );
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error assigning grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/start', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.startGrievance(parseInt(req.params.id), req.userId!);
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error starting grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/resolve', authMiddleware, async (req, res) => {
+    try {
+      const { resolutionText, resolutionPdf } = req.body;
+      if (!resolutionText) {
+        return res.status(400).json({ message: 'resolutionText is required' });
+      }
+      const grievance = await grievanceService.resolveGrievance(
+        parseInt(req.params.id),
+        resolutionText,
+        req.userId!,
+        resolutionPdf
+      );
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error resolving grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/escalate', authMiddleware, async (req, res) => {
+    try {
+      const { escalatedTo } = req.body;
+      if (!escalatedTo) {
+        return res.status(400).json({ message: 'escalatedTo is required' });
+      }
+      const grievance = await grievanceService.escalateGrievance(
+        parseInt(req.params.id),
+        escalatedTo,
+        req.userId!
+      );
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error escalating grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/reopen', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.reopenGrievance(parseInt(req.params.id), req.userId!);
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error reopening grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/close', authMiddleware, async (req, res) => {
+    try {
+      const grievance = await grievanceService.closeGrievance(parseInt(req.params.id), req.userId!);
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error closing grievance' });
+    }
+  });
+
+  app.post('/api/property-management/grievances/:id/feedback', async (req, res) => {
+    try {
+      const { rating, feedback } = req.body;
+      if (!rating) {
+        return res.status(400).json({ message: 'rating is required' });
+      }
+      const grievance = await grievanceService.submitFeedback(
+        parseInt(req.params.id),
+        rating,
+        feedback
+      );
+      res.json(grievance);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting feedback' });
+    }
+  });
+
+  app.get('/api/property-management/grievances/sla/violations', authMiddleware, async (req, res) => {
+    try {
+      const violations = await grievanceService.getSLAViolations();
+      res.json(violations);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching SLA violations' });
+    }
+  });
+
+  // Phase 9: Legal Case routes
+  app.post('/api/property-management/legal-cases', authMiddleware, async (req, res) => {
+    try {
+      const legalCase = await legalCaseService.createLegalCase(req.body, req.userId);
+      res.json(legalCase);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error creating legal case' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases', authMiddleware, async (req, res) => {
+    try {
+      const { propertyId, partyId, grievanceId, status, assignedTo } = req.query;
+      const filters: any = {};
+      if (propertyId) filters.propertyId = parseInt(propertyId as string);
+      if (partyId) filters.partyId = parseInt(partyId as string);
+      if (grievanceId) filters.grievanceId = parseInt(grievanceId as string);
+      if (status) filters.status = status as string;
+      if (assignedTo) filters.assignedTo = parseInt(assignedTo as string);
+      const legalCases = await legalCaseService.getLegalCases(filters);
+      res.json(legalCases);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching legal cases' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases/:id', authMiddleware, async (req, res) => {
+    try {
+      const legalCase = await legalCaseService.getLegalCase(parseInt(req.params.id));
+      res.json(legalCase);
+    } catch (error) {
+      res.status(404).json({ message: error instanceof Error ? error.message : 'Legal case not found' });
+    }
+  });
+
+  app.put('/api/property-management/legal-cases/:id', authMiddleware, async (req, res) => {
+    try {
+      const legalCase = await legalCaseService.updateLegalCase(parseInt(req.params.id), req.body);
+      res.json(legalCase);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating legal case' });
+    }
+  });
+
+  app.post('/api/property-management/legal-cases/:id/hearings', authMiddleware, async (req, res) => {
+    try {
+      const hearing = await legalCaseService.scheduleHearing(parseInt(req.params.id), req.body);
+      res.json(hearing);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error scheduling hearing' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases/:id/hearings', authMiddleware, async (req, res) => {
+    try {
+      const hearings = await legalCaseService.getHearings(parseInt(req.params.id));
+      res.json(hearings);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching hearings' });
+    }
+  });
+
+  app.put('/api/property-management/legal-cases/hearings/:id', authMiddleware, async (req, res) => {
+    try {
+      const hearing = await legalCaseService.updateHearing(parseInt(req.params.id), req.body);
+      res.json(hearing);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating hearing' });
+    }
+  });
+
+  app.post('/api/property-management/legal-cases/:id/orders', authMiddleware, async (req, res) => {
+    try {
+      const order = await legalCaseService.recordOrder(parseInt(req.params.id), req.body);
+      res.json(order);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error recording order' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases/:id/orders', authMiddleware, async (req, res) => {
+    try {
+      const orders = await legalCaseService.getOrders(parseInt(req.params.id));
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching orders' });
+    }
+  });
+
+  app.put('/api/property-management/legal-cases/orders/:id/compliance', authMiddleware, async (req, res) => {
+    try {
+      const { complianceStatus, complianceNotes } = req.body;
+      if (!complianceStatus) {
+        return res.status(400).json({ message: 'complianceStatus is required' });
+      }
+      const order = await legalCaseService.updateOrderCompliance(
+        parseInt(req.params.id),
+        complianceStatus,
+        complianceNotes,
+        req.userId
+      );
+      res.json(order);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating compliance' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases/upcoming-hearings', authMiddleware, async (req, res) => {
+    try {
+      const days = req.query.days ? parseInt(req.query.days as string) : 7;
+      const cases = await legalCaseService.getUpcomingHearings(days);
+      res.json(cases);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching upcoming hearings' });
+    }
+  });
+
+  app.get('/api/property-management/legal-cases/orders/requiring-compliance', authMiddleware, async (req, res) => {
+    try {
+      const orders = await legalCaseService.getOrdersRequiringCompliance();
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching orders requiring compliance' });
     }
   });
 

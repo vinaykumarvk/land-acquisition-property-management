@@ -53,7 +53,7 @@ const CrossDocumentQuery: React.FC<CrossDocumentQueryProps> = ({
   const { toast } = useToast();
 
   // Get query history
-  const { data: queryHistory = [] } = useQuery({
+  const { data: queryHistory = [] } = useQuery<QueryHistoryItem[]>({
     queryKey: [`/api/documents/cross-query/${requestType}/${requestId}`],
     enabled: isExpanded,
   });

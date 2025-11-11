@@ -19,6 +19,7 @@ import InvestmentRationaleModal from '@/components/rationale/InvestmentRationale
 import MarkdownRenderer from '@/components/documents/MarkdownRenderer';
 import { ApprovalHistoryCard } from '@/components/approval/ApprovalHistoryCard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { TaskItem } from "@/lib/types";
 
 export default function MyTasks() {
   const [expandedTask, setExpandedTask] = useState<number | null>(null);
@@ -35,7 +36,7 @@ export default function MyTasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: tasks = [], isLoading } = useQuery<TaskItem[]>({
     queryKey: ["/api/tasks"],
   });
 
@@ -266,23 +267,23 @@ function TaskCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const { data: requestData } = useQuery({
+  const { data: requestData } = useQuery<Record<string, any>>({
     queryKey: [`/api/${task.requestType.replace('_', '-')}s/${task.requestId}`],
     enabled: isExpanded,
   });
 
-  const { data: approvalHistory } = useQuery({
+  const { data: approvalHistory } = useQuery<any>({
     queryKey: [`/api/approvals/${task.requestType}/${task.requestId}`],
     enabled: isExpanded,
   });
 
-  const { data: documents } = useQuery({
+  const { data: documents = [] } = useQuery<any[]>({
     queryKey: [`/api/documents/${task.requestType}/${task.requestId}`],
     enabled: isExpanded,
   });
 
   // Fetch rationales for investment tasks
-  const { data: rationales } = useQuery({
+  const { data: rationales = [] } = useQuery<any[]>({
     queryKey: [`/api/investments/${task.requestId}/rationales`],
     enabled: isExpanded && task.requestType === 'investment',
   });
@@ -567,7 +568,6 @@ function TaskCard({
                     <UnifiedSearchInterface 
                       documents={documents}
                       requestId={task.requestId}
-                      requestType={task.requestType}
                       isExpanded={isResearchExpanded}
                       onExpandedChange={setIsResearchExpanded}
                     />

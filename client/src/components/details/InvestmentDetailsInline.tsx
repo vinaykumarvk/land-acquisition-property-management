@@ -11,18 +11,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle, AlertTriangle, Clock, Eye, ChevronDown, ChevronUp, Edit, Send, FileText, Upload, X, Save, Search, Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import DocumentAnalysisCard from "@/components/documents/DocumentAnalysisCard";
+import DocumentAnalysisCard, { type AnalysisDocument } from "@/components/documents/DocumentAnalysisCard";
 import UnifiedSearchInterface from "@/components/documents/UnifiedSearchInterface";
 import InvestmentRationaleModal from "@/components/rationale/InvestmentRationaleModal";
 import { EnhancedDocumentCategorySelector } from "@/components/documents/EnhancedDocumentCategorySelector";
 import MarkdownRenderer from "@/components/documents/MarkdownRenderer";
 import { ApprovalHistoryCard } from '@/components/approval/ApprovalHistoryCard';
+
+interface InvestmentDetailsData {
+  id: number;
+  targetCompany?: string;
+  investmentType?: string;
+  amount?: number | string;
+  expectedReturn?: number | string;
+  description?: string;
+  riskLevel?: string;
+  status?: string;
+  [key: string]: any;
+}
+
+interface InvestmentRationale {
+  id: number;
+  content: string;
+  [key: string]: any;
+}
+
+const INVESTMENT_TYPES = ["equity", "debt", "real_estate", "alternative"] as const;
+type InvestmentType = (typeof INVESTMENT_TYPES)[number];
+const RISK_LEVELS = ["low", "medium", "high"] as const;
+type RiskLevel = (typeof RISK_LEVELS)[number];
+
+const normalizeInvestmentType = (value?: string): InvestmentType =>
+  INVESTMENT_TYPES.includes(value as InvestmentType) ? (value as InvestmentType) : "equity";
+
+const normalizeRiskLevel = (value?: string): RiskLevel =>
+  RISK_LEVELS.includes(value as RiskLevel) ? (value as RiskLevel) : "medium";
 
 // Edit form schema
 const editFormSchema = z.object({
@@ -57,9 +86,10 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
   const [editingRationaleContent, setEditingRationaleContent] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [rationaleToDelete, setRationaleToDelete] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch detailed investment data when expanded
-  const { data: investmentDetails, isLoading: isInvestmentLoading } = useQuery({
+  const { data: investmentDetails, isLoading: isInvestmentLoading } = useQuery<InvestmentDetailsData>({
     queryKey: [`/api/investments/${investment?.id}`],
     enabled: !!investment?.id && isExpanded,
   });
@@ -71,16 +101,20 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
   });
 
   // Fetch documents
-  const { data: documents } = useQuery({
+  const { data: documentsData } = useQuery<AnalysisDocument[]>({
     queryKey: [`/api/documents/investment/${investment?.id}`],
     enabled: !!investment?.id && isExpanded,
   });
 
   // Fetch investment rationales
-  const { data: rationales } = useQuery({
+  const { data: rationalesData } = useQuery<InvestmentRationale[]>({
     queryKey: [`/api/investments/${investment?.id}/rationales`],
     enabled: !!investment?.id && isExpanded,
   });
+
+  const documentsRaw = documentsData ?? [];
+  const documents = documentsRaw as AnalysisDocument[];
+  const rationales = rationalesData ?? [];
 
   // Edit form
   const editForm = useForm<z.infer<typeof editFormSchema>>({
@@ -97,18 +131,18 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
 
   // Initialize form when investment details are loaded using useEffect
   useEffect(() => {
-    if (investmentDetails && typeof investmentDetails === 'object' && 'targetCompany' in investmentDetails && !isInlineEditing) {
-      const details = investmentDetails as any;
+    if (investmentDetails && !isInlineEditing) {
+      const details = investmentDetails;
       editForm.reset({
         targetCompany: details.targetCompany || "",
-        investmentType: details.investmentType || "equity",
+        investmentType: normalizeInvestmentType(details.investmentType),
         amount: details.amount?.toString() || "",
         expectedReturn: details.expectedReturn?.toString() || "",
         description: details.description || "",
-        riskLevel: details.riskLevel || "medium",
+        riskLevel: normalizeRiskLevel(details.riskLevel),
       });
     }
-  }, [investmentDetails, isInlineEditing]);
+  }, [investmentDetails, isInlineEditing, editForm]);
 
   // Mutations
   const editDraftMutation = useMutation({
@@ -382,7 +416,7 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
       // Final cleanup for any remaining letter spacing issues  
       cleanContent = cleanContent.replace(/(?<=\w)\s+(?=\w)/g, '');
       
-      const contentLines = cleanContent.split('\n').filter(line => line.trim());
+      const contentLines = cleanContent.split('\n').filter((line: string) => line.trim());
       
       pdf.setFontSize(10);
       contentLines.forEach((line: string) => {
@@ -441,15 +475,15 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
     setUploadedFiles([]);
     setFilesToDelete([]);
     // Reset form to original values
-    if (investmentDetails && typeof investmentDetails === 'object') {
-      const details = investmentDetails as any;
+    if (investmentDetails) {
+      const details = investmentDetails;
       editForm.reset({
         targetCompany: details.targetCompany || "",
-        investmentType: details.investmentType || "equity",
+        investmentType: normalizeInvestmentType(details.investmentType),
         amount: details.amount?.toString() || "",
         expectedReturn: details.expectedReturn?.toString() || "",
         description: details.description || "",
-        riskLevel: details.riskLevel || "medium",
+        riskLevel: normalizeRiskLevel(details.riskLevel),
       });
     }
   };
@@ -493,7 +527,7 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
     setRationaleToDelete(null);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setUploadedFiles(prev => [...prev, ...files]);
   };
@@ -594,12 +628,12 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
       <CollapsibleContent className="mt-4">
         {isInvestmentLoading ? (
           <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
-        ) : investmentDetails && typeof investmentDetails === 'object' && 'targetCompany' in investmentDetails ? (
+        ) : investmentDetails ? (
           <div className="space-y-6">
             {/* I. Attached Documents */}
-            {documents && Array.isArray(documents) && documents.length > 0 && (
+            {documents.length > 0 && (
               <Card>
                 <CardHeader 
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors py-3"
@@ -615,25 +649,25 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                 </CardHeader>
                 {isDocumentsExpanded && (
                   <CardContent className="pt-0 pb-4">
-                  <div className="space-y-3">
-                    {Array.isArray(documents) && documents.map((doc: any) => (
-                      <DocumentAnalysisCard
-                        key={doc.id}
-                        document={doc}
-                        requestId={investment.id}
-                        requestType="investment"
-                        showAnalysisLabel={false}
-                        showOnlyProcessed={true}
-                      />
-                    ))}
-                  </div>
+                    <div className="space-y-3">
+                      {documents.map((doc) => (
+                        <DocumentAnalysisCard
+                          key={doc.id}
+                          document={doc}
+                          requestId={investment.id}
+                          requestType="investment"
+                          showAnalysisLabel={false}
+                          showOnlyProcessed={true}
+                        />
+                      ))}
+                    </div>
                   </CardContent>
                 )}
               </Card>
             )}
 
             {/* II. Research & Analysis */}
-            {documents && Array.isArray(documents) && documents.length > 0 && (
+            {documents.length > 0 && (
               <Card>
                 <CardHeader 
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors py-3"
@@ -650,9 +684,8 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                 {isResearchExpanded && (
                   <CardContent className="pt-0 pb-4">
                     <UnifiedSearchInterface 
-                      documents={Array.isArray(documents) ? documents : []}
+                      documents={documentsRaw as any}
                       requestId={investment.id}
-                      requestType="investment"
                       isExpanded={isResearchExpanded}
                       onExpandedChange={setIsResearchExpanded}
                     />
@@ -790,17 +823,14 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                 ) : (
                   <div className="bg-gray-50 p-3 rounded border min-h-[60px]">
                     <MarkdownRenderer 
-                      content={(investmentDetails && typeof investmentDetails === 'object' && 'description' in investmentDetails) 
-                        ? (investmentDetails as any).description || 'No description provided by the analyst'
-                        : 'No description provided by the analyst'}
+                      content={investmentDetails.description || 'No description provided by the analyst'}
                       className="text-gray-800"
                     />
                   </div>
                 )}
                 
                 {/* Draft Actions */}
-                {(investmentDetails && typeof investmentDetails === 'object' && 'status' in investmentDetails && 
-                  ((investmentDetails as any).status?.toLowerCase() === 'draft' || (investmentDetails as any).status?.toLowerCase() === 'changes_requested')) && (
+                {(investmentDetails.status?.toLowerCase() === 'draft' || investmentDetails.status?.toLowerCase() === 'changes_requested') && (
                   <div className="mt-4 flex gap-2">
                     {isInlineEditing ? (
                       <>
@@ -845,8 +875,7 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                     >
                       <Send className="h-4 w-4" />
                       {submitDraftMutation.isPending ? 'Submitting...' : 
-                       (investmentDetails && typeof investmentDetails === 'object' && 'status' in investmentDetails && 
-                        (investmentDetails as any).status?.toLowerCase() === 'changes_requested') ? 'Resubmit for Approval' : 'Submit for Approval'}
+                       investmentDetails.status?.toLowerCase() === 'changes_requested' ? 'Resubmit for Approval' : 'Submit for Approval'}
                     </Button>
                   </div>
                 )}
@@ -871,13 +900,14 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                             multiple
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                             onChange={handleFileUpload}
+                            ref={fileInputRef}
                             className="flex-1"
                           />
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => document.querySelector('input[type="file"]')?.click()}
+                            onClick={() => fileInputRef.current?.click()}
                             className="flex items-center gap-2"
                           >
                             <Upload className="h-4 w-4" />
@@ -915,11 +945,11 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                     )}
                     
                     {/* Existing Documents */}
-                    {documents && Array.isArray(documents) && documents.length > 0 && (
+                    {documents.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium mb-2">Existing Documents</label>
                         <div className="space-y-2">
-                          {Array.isArray(documents) && documents.map((doc: any) => (
+                          {documents.map((doc) => (
                             <div key={doc.id} className={`flex items-center justify-between p-2 rounded border ${
                               filesToDelete.includes(doc.id) ? 'bg-red-50 border-red-200' : 'bg-white'
                             }`}>
@@ -977,25 +1007,25 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors py-3"
                 onClick={() => setIsRationaleExpanded(!isRationaleExpanded)}
               >
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FileText className="h-4 w-4" />
-                    Investment Rationale
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    {rationales && rationales.length > 0 && (
-                      <Badge variant="secondary">{rationales.length}</Badge>
-                    )}
-                    {isRationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </div>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4" />
+                        Investment Rationale
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        {rationales.length > 0 && (
+                          <Badge variant="secondary">{rationales.length}</Badge>
+                        )}
+                        {isRationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </div>
               </CardHeader>
               {isRationaleExpanded && (
                 <CardContent className="pt-0 pb-4">
                   <div className="space-y-4">
-                    {rationales && rationales.length > 0 ? (
+                    {rationales.length > 0 ? (
                       <div className="space-y-3">
-                        {rationales.map((rationale: any) => (
+                        {rationales.map((rationale) => (
                           <div key={rationale.id} className="border rounded-lg p-4 space-y-3">
                             <div className="flex justify-between items-start">
                               <div className="space-y-1">
@@ -1121,8 +1151,7 @@ export function InvestmentDetailsInline({ investment, isExpanded, onToggle }: In
         isOpen={isRationaleModalOpen}
         onClose={() => setIsRationaleModalOpen(false)}
         investmentId={investment?.id}
-        investmentType={(investmentDetails && typeof investmentDetails === 'object' && 'investmentType' in investmentDetails) 
-          ? investmentDetails.investmentType : 'equity'}
+        investmentType={investmentDetails?.investmentType || 'equity'}
       />
       
       {/* Delete Confirmation Dialog */}

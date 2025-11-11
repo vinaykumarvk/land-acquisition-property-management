@@ -11,7 +11,7 @@ import { format } from "date-fns";
 export default function CashRequests() {
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   
-  const { data: cashRequests, isLoading } = useQuery({
+  const { data: cashRequests = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/cash-requests"],
   });
 
@@ -66,7 +66,7 @@ export default function CashRequests() {
       </div>
 
       <div className="grid gap-4">
-        {cashRequests?.length === 0 ? (
+        {cashRequests.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
               <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -77,7 +77,7 @@ export default function CashRequests() {
             </CardContent>
           </Card>
         ) : (
-          cashRequests?.map((request: any) => (
+          cashRequests.map((request: any) => (
             <Card key={request.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">

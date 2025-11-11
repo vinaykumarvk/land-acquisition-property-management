@@ -61,7 +61,7 @@ export default function WebSearchQuery({ requestType, requestId }: WebSearchQuer
   const queryClient = useQueryClient();
 
   // Fetch web search query history
-  const { data: queryHistory = [], refetch } = useQuery({
+  const { data: queryHistory = [], refetch } = useQuery<WebSearchQueryItem[]>({
     queryKey: [`/api/documents/web-search/${requestType}/${requestId}`],
     enabled: isExpanded,
   });
