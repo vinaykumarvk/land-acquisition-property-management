@@ -4,3 +4,25 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# User-generated content (should not be in repository)
+uploads/
+attached_assets/
+
+# Test files and artifacts
+test-*.pdf
+test-*.txt
+test-*.json
+test-*.sh
+
+# Log files
+*.log
+
+# Backup files
+*.backup
+
+# Session and temporary files
+session_cookie.txt
+proposal-consistency-analysis.json
+test_result.json
+.env
