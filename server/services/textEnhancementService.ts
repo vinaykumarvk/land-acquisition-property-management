@@ -1,8 +1,18 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. AI features are disabled.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export type EnhancementType = 'professional' | 'grammar' | 'clarity' | 'rewrite';
 
@@ -58,7 +68,8 @@ export async function enhanceText(text: string, type: EnhancementType = 'profess
   try {
     // Use the same OpenAI Responses API pattern as the working services
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.responses.create({
+    const client = getOpenAI();
+    const response = await client.responses.create({
       model: "gpt-4o",
       input: enhancementInput,
     });

@@ -50,11 +50,20 @@ export default function LamsNotifications() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: notifications, isLoading } = useQuery<Notification[]>({
+  const { data: notifications, isLoading, error: notificationsError } = useQuery<Notification[]>({
     queryKey: ["/api/lams/notifications"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/lams/notifications");
-      return response.json();
+      try {
+        const response = await apiRequest("GET", "/api/lams/notifications");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch notifications: ${response.status}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        throw error;
+      }
     },
   });
 
@@ -78,14 +87,16 @@ export default function LamsNotifications() {
     type: "sec11" as "sec11" | "sec19",
     title: "",
     bodyHtml: "",
-    siaId: "",
+    siaId: "none",
     selectedParcels: [] as number[],
   });
 
   const [publishSettings, setPublishSettings] = useState<Record<number, PublishSettings>>({});
+  const [highlightedNotificationId, setHighlightedNotificationId] = useState<number | null>(null);
+  const [hasScrolledToNotification, setHasScrolledToNotification] = useState(false);
 
   useEffect(() => {
-    if (!notifications) return;
+    if (!notifications || !Array.isArray(notifications)) return;
     setPublishSettings((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -103,6 +114,45 @@ export default function LamsNotifications() {
       return changed ? next : prev;
     });
   }, [notifications]);
+
+  // Read ID from URL query parameter on mount and scroll to it
+  useEffect(() => {
+    if (!notifications || !Array.isArray(notifications) || hasScrolledToNotification) return;
+    
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get("id");
+      if (idParam) {
+        const notificationId = parseInt(idParam, 10);
+        if (!isNaN(notificationId) && notificationId > 0) {
+          const notification = notifications.find((n) => n && n.id === notificationId);
+          if (notification) {
+            setHighlightedNotificationId(notificationId);
+            setHasScrolledToNotification(true);
+            // Scroll to the notification after a delay to ensure it's rendered
+            const scrollTimeout = setTimeout(() => {
+              try {
+                const element = document.getElementById(`notification-${notificationId}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: "smooth", block: "center" });
+                  // Remove highlight after 3 seconds
+                  setTimeout(() => {
+                    setHighlightedNotificationId(null);
+                  }, 3000);
+                }
+              } catch (error) {
+                console.error("Error scrolling to notification:", error);
+              }
+            }, 300);
+            
+            return () => clearTimeout(scrollTimeout);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in notification scroll effect:", error);
+    }
+  }, [notifications, hasScrolledToNotification]);
 
   const handleFieldChange = (field: string, value: string | number[] | "sec11" | "sec19") => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -125,7 +175,7 @@ export default function LamsNotifications() {
         bodyHtml: formState.bodyHtml,
       };
 
-      if (formState.siaId) {
+      if (formState.siaId && formState.siaId !== "none") {
         notificationData.siaId = Number(formState.siaId);
       }
 
@@ -140,7 +190,7 @@ export default function LamsNotifications() {
         type: "sec11",
         title: "",
         bodyHtml: "",
-        siaId: "",
+        siaId: "none",
         selectedParcels: [],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/lams/notifications"] });
@@ -239,6 +289,22 @@ export default function LamsNotifications() {
     );
   }
 
+  if (notificationsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-destructive font-semibold">Error loading notifications</p>
+          <p className="text-sm text-muted-foreground">
+            {notificationsError instanceof Error 
+              ? notificationsError.message 
+              : "An unexpected error occurred"}
+          </p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -273,7 +339,7 @@ export default function LamsNotifications() {
                     <SelectValue placeholder="Select SIA" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No linked SIA</SelectItem>
+                    <SelectItem value="none">No linked SIA</SelectItem>
                     {sias.map((sia) => (
                       <SelectItem key={sia.id} value={String(sia.id)}>
                         {sia.noticeNo} — {sia.title}
@@ -359,8 +425,10 @@ export default function LamsNotifications() {
           <CardTitle>Notifications</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {notifications && notifications.length > 0 ? (
+          {notifications && Array.isArray(notifications) && notifications.length > 0 ? (
             notifications.map((notification) => {
+              if (!notification || !notification.id) return null;
+              
               const settings = publishSettings[notification.id] || {
                 publishDate: new Date().toISOString().slice(0, 16),
                 email: true,
@@ -369,27 +437,35 @@ export default function LamsNotifications() {
               };
 
               return (
-                <div key={notification.id} className="border rounded-lg p-4 space-y-3">
+                <div 
+                  key={notification.id} 
+                  id={`notification-${notification.id}`}
+                  className={`border rounded-lg p-4 space-y-3 transition-all ${
+                    highlightedNotificationId === notification.id 
+                      ? "border-primary bg-primary/5 shadow-md" 
+                      : ""
+                  }`}
+                >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold break-words">{notification.title}</p>
-                      <p className="text-xs text-muted-foreground">{notification.refNo}</p>
+                      <p className="font-semibold break-words">{notification.title || "Untitled"}</p>
+                      <p className="text-xs text-muted-foreground">{notification.refNo || "N/A"}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant={notification.type === "sec11" ? "default" : "destructive"}>
                         {notification.type === "sec11" ? "Section 11" : "Section 19"}
                       </Badge>
                       <Badge variant="secondary" className="uppercase">
-                        {notification.status.replace(/_/g, " ")}
+                        {notification.status ? notification.status.replace(/_/g, " ") : "Unknown"}
                       </Badge>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {notification.bodyHtml.replace(/<[^>]+>/g, "")}
+                    {notification.bodyHtml ? notification.bodyHtml.replace(/<[^>]+>/g, "") : "No content"}
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {STATUS_ACTIONS[notification.status]?.map((action) => (
+                    {notification.status && STATUS_ACTIONS[notification.status]?.map((action) => (
                       <Button
                         key={action.label}
                         size="sm"

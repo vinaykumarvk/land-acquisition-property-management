@@ -1,9 +1,19 @@
 import OpenAI from 'openai';
 import { storage } from '../storage';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. AI features are disabled.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 const VECTOR_STORE_ID = 'vs_687584b54f908191b0a21ffa42948fb5';
 

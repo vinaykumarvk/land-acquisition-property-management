@@ -34,34 +34,32 @@ export type LegacyRole = typeof LEGACY_ROLES[keyof typeof LEGACY_ROLES];
 export type UserRole = LAMSRole | LegacyRole;
 
 // Role hierarchy for permissions (higher number = more permissions)
+// Note: LAMS_ROLES.ADMIN and LEGACY_ROLES.ADMIN both have value 'admin', so we only include one
 export const ROLE_HIERARCHY: Record<string, number> = {
-  [LAMS_ROLES.ADMIN]: 100,
+  [LAMS_ROLES.ADMIN]: 100, // Same as LEGACY_ROLES.ADMIN
   [LAMS_ROLES.CASE_OFFICER]: 80,
   [LAMS_ROLES.LEGAL_OFFICER]: 70,
-  [LAMS_ROLES.FINANCE_OFFICER]: 70,
+  [LAMS_ROLES.FINANCE_OFFICER]: 70, // Same as LEGACY_ROLES.FINANCE
   [LAMS_ROLES.AUDITOR]: 50,
   [LAMS_ROLES.CITIZEN]: 10,
-  // Legacy roles
-  [LEGACY_ROLES.ADMIN]: 100,
+  // Legacy roles (excluding duplicates)
   [LEGACY_ROLES.MANAGER]: 80,
   [LEGACY_ROLES.COMMITTEE_MEMBER]: 70,
-  [LEGACY_ROLES.FINANCE]: 70,
   [LEGACY_ROLES.ANALYST]: 50,
 };
 
 // Role display names
+// Note: LAMS_ROLES.ADMIN and LEGACY_ROLES.ADMIN both have value 'admin', so we only include one
 export const ROLE_DISPLAY_NAMES: Record<string, string> = {
-  [LAMS_ROLES.ADMIN]: 'Administrator',
+  [LAMS_ROLES.ADMIN]: 'Administrator', // Same as LEGACY_ROLES.ADMIN
   [LAMS_ROLES.CASE_OFFICER]: 'Case Officer',
   [LAMS_ROLES.LEGAL_OFFICER]: 'Legal Officer',
-  [LAMS_ROLES.FINANCE_OFFICER]: 'Finance Officer',
+  [LAMS_ROLES.FINANCE_OFFICER]: 'Finance Officer', // Same as LEGACY_ROLES.FINANCE
   [LAMS_ROLES.CITIZEN]: 'Citizen',
   [LAMS_ROLES.AUDITOR]: 'Auditor',
-  // Legacy roles
-  [LEGACY_ROLES.ADMIN]: 'Administrator',
+  // Legacy roles (excluding duplicates)
   [LEGACY_ROLES.MANAGER]: 'Manager',
   [LEGACY_ROLES.COMMITTEE_MEMBER]: 'Committee Member',
-  [LEGACY_ROLES.FINANCE]: 'Finance',
   [LEGACY_ROLES.ANALYST]: 'Analyst',
 };
 

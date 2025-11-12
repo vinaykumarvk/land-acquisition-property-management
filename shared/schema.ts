@@ -1964,6 +1964,13 @@ export type ConveyanceDeed = typeof conveyanceDeeds.$inferSelect;
 export type InsertConveyanceDeed = z.infer<typeof insertConveyanceDeedSchema>;
 
 // Phase 4 Zod Schemas
+export const insertPmsPaymentSchema = createInsertSchema(pmsPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  paidOn: true,
+});
+
 export const insertDemandNoteSchema = createInsertSchema(demandNotes).omit({
   id: true,
   createdAt: true,
@@ -2142,6 +2149,7 @@ export const insertCourtOrderSchema = createInsertSchema(courtOrders).omit({
 export type DemandNote = typeof demandNotes.$inferSelect;
 export type InsertDemandNote = z.infer<typeof insertDemandNoteSchema>;
 export type PmsPayment = typeof pmsPayments.$inferSelect;
+export type InsertPmsPayment = z.infer<typeof insertPmsPaymentSchema>;
 export type Receipt = typeof receipts.$inferSelect;
 export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
 export type Refund = typeof refunds.$inferSelect;
@@ -2168,6 +2176,20 @@ export type SewerageConnection = typeof sewerageConnections.$inferSelect;
 export type InsertSewerageConnection = z.infer<typeof insertSewerageConnectionSchema>;
 export type ConnectionInspection = typeof connectionInspections.$inferSelect;
 export type InsertConnectionInspection = z.infer<typeof insertConnectionInspectionSchema>;
+
+// Phase 6 Types - Inspections and Certificates
+export type Inspection = typeof inspections.$inferSelect;
+export type InsertInspection = z.infer<typeof insertInspectionSchema>;
+export type DemarcationRequest = typeof demarcationRequests.$inferSelect;
+export type InsertDemarcationRequest = z.infer<typeof insertDemarcationRequestSchema>;
+export type DpcRequest = typeof dpcRequests.$inferSelect;
+export type InsertDpcRequest = z.infer<typeof insertDpcRequestSchema>;
+export type OccupancyCertificate = typeof occupancyCertificates.$inferSelect;
+export type InsertOccupancyCertificate = z.infer<typeof insertOccupancyCertificateSchema>;
+export type CompletionCertificate = typeof completionCertificates.$inferSelect;
+export type InsertCompletionCertificate = z.infer<typeof insertCompletionCertificateSchema>;
+export type Deviation = typeof deviations.$inferSelect;
+export type InsertDeviation = z.infer<typeof insertDeviationSchema>;
 export type MeterReading = typeof meterReadings.$inferSelect;
 export type InsertMeterReading = z.infer<typeof insertMeterReadingSchema>;
 

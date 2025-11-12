@@ -119,9 +119,9 @@ export default function Schemes() {
       case "published":
         return "bg-green-500";
       case "draft":
-        return "bg-gray-500";
+        return "bg-muted";
       case "closed":
-        return "bg-red-500";
+        return "bg-destructive";
       default:
         return "bg-blue-500";
     }

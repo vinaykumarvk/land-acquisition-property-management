@@ -124,7 +124,7 @@ export default function SchemeDetail() {
       case "submitted":
         return "bg-yellow-500";
       default:
-        return "bg-gray-500";
+        return "bg-muted";
     }
   };
 
@@ -250,7 +250,7 @@ export default function SchemeDetail() {
                 <CardTitle>Status</CardTitle>
               </CardHeader>
               <CardContent>
-                <Badge className={scheme.status === "published" ? "bg-green-500" : "bg-gray-500"}>
+                <Badge className={scheme.status === "published" ? "bg-success" : "bg-muted"}>
                   {scheme.status}
                 </Badge>
               </CardContent>

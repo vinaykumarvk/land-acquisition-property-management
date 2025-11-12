@@ -148,7 +148,7 @@ export class NOCService {
         qrCode: verifyUrl,
         issuedAt: new Date(),
         issuedBy: userId,
-      });
+      } as Partial<InsertNOC>);
 
       return updated;
     } catch (error) {

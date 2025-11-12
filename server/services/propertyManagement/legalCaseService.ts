@@ -318,8 +318,8 @@ export class LegalCaseService {
       };
 
       if (complianceStatus === "complied") {
-        updateData.compliedAt = new Date();
-        updateData.compliedBy = compliedBy;
+        (updateData as any).compliedAt = new Date();
+        (updateData as any).compliedBy = compliedBy;
       }
 
       const updated = await storage.updateCourtOrder(orderId, updateData);

@@ -151,7 +151,7 @@ export class DemarcationService {
         resultJson: inspectionResult.resultJson,
         photos: inspectionResult.photos as any,
         remarks: inspectionResult.remarks,
-      });
+      } as Partial<InsertInspection>);
 
       const updated = await storage.updateDemarcationRequest(requestId, {
         status: "inspection_completed",
@@ -200,7 +200,7 @@ export class DemarcationService {
         qrCode: verifyUrl,
         issuedAt: new Date(),
         issuedBy: userId,
-      });
+      } as Partial<InsertDemarcationRequest>);
 
       return updated;
     } catch (error) {

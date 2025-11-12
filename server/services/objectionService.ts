@@ -40,7 +40,9 @@ export class ObjectionService {
         ownerId: objectionData.ownerId || userId || null,
         status: 'received',
         attachmentsJson: objectionData.attachmentsJson ?? null,
-        attachmentPath: objectionData.attachmentsJson?.[0]?.path,
+        attachmentPath: Array.isArray(objectionData.attachmentsJson) && objectionData.attachmentsJson.length > 0 
+          ? (objectionData.attachmentsJson[0] as any)?.path 
+          : null,
       };
 
       // Create objection
@@ -110,7 +112,7 @@ export class ObjectionService {
         resolutionText,
         resolvedBy: resolverId,
         resolvedAt: new Date(),
-      });
+      } as Partial<InsertObjection>);
 
       // Check if all objections for this notification are resolved
       const notification = await storage.getLandNotification(objection.notificationId);

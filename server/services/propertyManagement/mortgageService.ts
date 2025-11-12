@@ -110,7 +110,7 @@ export class MortgageService {
         status: "approved",
         approvedBy: userId,
         approvedAt: new Date(),
-      });
+      } as Partial<InsertMortgage>);
 
       // Activate mortgage
       await storage.updateMortgage(mortgageId, {

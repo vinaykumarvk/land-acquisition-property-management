@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,16 @@ export default function LamsSia() {
   });
   const [minutesUpload, setMinutesUpload] = useState<UploadedFile | null>(null);
   const [isUploadingMinutes, setIsUploadingMinutes] = useState(false);
+
+  // Read ID from URL query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idParam = params.get("id");
+    if (idParam) {
+      setSelectedSiaId(idParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   const { data: selectedSiaDetail, refetch: refetchSelectedSia, isFetching: loadingSelectedSia } = useQuery<SiaDetails>({
     queryKey: ["/api/lams/sia/detail", selectedSiaId],

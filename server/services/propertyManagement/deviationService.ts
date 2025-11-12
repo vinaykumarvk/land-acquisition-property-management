@@ -81,8 +81,8 @@ export class DeviationService {
   async levyFee(
     deviationId: number,
     fee: number,
-    penalty?: number,
-    userId: number
+    userId: number,
+    penalty?: number
   ): Promise<Deviation> {
     try {
       const deviation = await storage.getDeviation(deviationId);
@@ -174,14 +174,14 @@ export class DeviationService {
           inspectedAt: new Date(),
           photos: rectificationData.photos as any,
           remarks: rectificationData.remarks,
-        });
+        } as Partial<InsertInspection>);
       }
 
       const updated = await storage.updateDeviation(deviationId, {
         status: "rectified",
         rectifiedAt: new Date(),
         rectifiedBy: userId,
-      });
+      } as Partial<InsertDeviation>);
 
       return updated;
     } catch (error) {
@@ -213,7 +213,7 @@ export class DeviationService {
         status: "approved",
         approvedAt: new Date(),
         approvedBy: userId,
-      });
+      } as Partial<InsertDeviation>);
 
       return updated;
     } catch (error) {

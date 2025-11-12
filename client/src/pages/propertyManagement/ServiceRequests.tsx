@@ -108,9 +108,9 @@ export default function ServiceRequests() {
       case "under_review":
         return "bg-blue-500";
       case "rejected":
-        return "bg-red-500";
+        return "bg-destructive";
       default:
-        return "bg-gray-500";
+        return "bg-muted";
     }
   };
 

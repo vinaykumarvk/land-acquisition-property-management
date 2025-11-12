@@ -387,10 +387,13 @@ export class CompensationService {
         status: 'initiated',
       });
 
+      // Get owner for receipt
+      const owner = await storage.getOwner(award.ownerId);
+      
       // Generate payment receipt PDF
       const { filePath: receiptPath, hash: receiptHash } = await pdfService.generatePaymentReceipt(
         payment.id,
-        award.awardNo,
+        award.awardNo || '',
         owner?.name || 'Unknown',
         Number(payment.amount),
         payment.mode as 'neft' | 'upi' | 'pfms',

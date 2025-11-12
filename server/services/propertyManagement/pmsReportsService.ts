@@ -172,28 +172,28 @@ export class PMSReportsService {
 
       if (filters?.startDate || filters?.endDate) {
         filteredSchemes = allSchemes.filter((s) => {
-          const sDate = new Date(s.createdAt);
+          const sDate = s.createdAt ? new Date(s.createdAt) : new Date();
           if (filters.startDate && sDate < filters.startDate) return false;
           if (filters.endDate && sDate > filters.endDate) return false;
           return true;
         });
 
         filteredApplications = allApplications.filter((a) => {
-          const aDate = new Date(a.createdAt);
+          const aDate = a.createdAt ? new Date(a.createdAt) : new Date();
           if (filters.startDate && aDate < filters.startDate) return false;
           if (filters.endDate && aDate > filters.endDate) return false;
           return true;
         });
 
         filteredAllotments = allAllotments.filter((a) => {
-          const aDate = new Date(a.createdAt);
+          const aDate = a.createdAt ? new Date(a.createdAt) : new Date();
           if (filters.startDate && aDate < filters.startDate) return false;
           if (filters.endDate && aDate > filters.endDate) return false;
           return true;
         });
 
         filteredServiceRequests = allServiceRequests.filter((sr) => {
-          const srDate = new Date(sr.createdAt);
+          const srDate = sr.createdAt ? new Date(sr.createdAt) : new Date();
           if (filters.startDate && srDate < filters.startDate) return false;
           if (filters.endDate && srDate > filters.endDate) return false;
           return true;
@@ -227,7 +227,7 @@ export class PMSReportsService {
             status: scheme.status,
             applicationsCount: schemeApplications.length,
             allotmentsCount: schemeAllotments.length,
-            createdAt: new Date(scheme.createdAt),
+            createdAt: scheme.createdAt ? new Date(scheme.createdAt) : new Date(),
           };
         })
       );
@@ -244,7 +244,7 @@ export class PMSReportsService {
             partyName: party?.name || "Unknown",
             status: app.status,
             score: app.score ? Number(app.score) : null,
-            createdAt: new Date(app.createdAt),
+            createdAt: app.createdAt ? new Date(app.createdAt) : new Date(),
           };
         })
       );

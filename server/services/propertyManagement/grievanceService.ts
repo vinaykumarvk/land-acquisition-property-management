@@ -94,7 +94,7 @@ export class GrievanceService {
       // Calculate SLA due date
       const slaDue = this.calculateSLADue(
         grievanceData.priority || "medium",
-        grievanceData.slaHours
+        grievanceData.slaHours ?? undefined
       );
 
       const grievance = await storage.createGrievance({
@@ -265,7 +265,7 @@ export class GrievanceService {
         resolutionPdf,
         resolvedAt: new Date(),
         resolvedBy: userId,
-      });
+      } as Partial<InsertGrievance>);
 
       // Notify party if linked
       if (existing.partyId) {
@@ -301,7 +301,7 @@ export class GrievanceService {
         escalatedTo,
         assignedTo: escalatedTo,
         status: "assigned", // Reset to assigned for new officer
-      });
+      } as Partial<InsertGrievance>);
 
       // Notify escalated to officer
       await notificationService.createNotification({
@@ -337,7 +337,7 @@ export class GrievanceService {
       // Recalculate SLA
       const slaDue = this.calculateSLADue(
         existing.priority || "medium",
-        existing.slaHours
+        existing.slaHours ?? undefined
       );
 
       const updated = await storage.updateGrievance(id, {
@@ -346,7 +346,7 @@ export class GrievanceService {
         resolvedAt: null,
         resolvedBy: null,
         resolutionText: null,
-      });
+      } as Partial<InsertGrievance>);
 
       // Notify assigned officer
       if (updated.assignedTo) {
@@ -385,7 +385,7 @@ export class GrievanceService {
         status: "closed",
         closedAt: new Date(),
         closedBy: userId,
-      });
+      } as Partial<InsertGrievance>);
 
       return updated;
     } catch (error) {

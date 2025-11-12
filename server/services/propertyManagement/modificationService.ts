@@ -121,7 +121,7 @@ export class ModificationService {
         status: "approved",
         approvedBy: userId,
         approvedAt: new Date(),
-      });
+      } as Partial<InsertModification>);
 
       // Complete modification
       await storage.updateModification(modificationId, {

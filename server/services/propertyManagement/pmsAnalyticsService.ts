@@ -148,7 +148,7 @@ export class PMSAnalyticsService {
         let filteredApplications = schemeApplications;
         if (filters?.startDate || filters?.endDate) {
           filteredApplications = schemeApplications.filter((app) => {
-            const appDate = new Date(app.createdAt);
+            const appDate = app.createdAt ? new Date(app.createdAt) : new Date();
             if (filters.startDate && appDate < filters.startDate) return false;
             if (filters.endDate && appDate > filters.endDate) return false;
             return true;
@@ -244,7 +244,7 @@ export class PMSAnalyticsService {
         let filteredApplications = schemeApplications;
         if (filters?.startDate || filters?.endDate) {
           filteredApplications = schemeApplications.filter((app) => {
-            const appDate = new Date(app.createdAt);
+            const appDate = app.createdAt ? new Date(app.createdAt) : new Date();
             if (filters.startDate && appDate < filters.startDate) return false;
             if (filters.endDate && appDate > filters.endDate) return false;
             return true;
@@ -315,7 +315,7 @@ export class PMSAnalyticsService {
       let filteredDemandNotes = allDemandNotes;
       if (filters?.startDate || filters?.endDate) {
         filteredDemandNotes = allDemandNotes.filter((dn) => {
-          const dnDate = new Date(dn.createdAt);
+          const dnDate = dn.createdAt ? new Date(dn.createdAt) : new Date();
           if (filters.startDate && dnDate < filters.startDate) return false;
           if (filters.endDate && dnDate > filters.endDate) return false;
           return true;
@@ -419,7 +419,7 @@ export class PMSAnalyticsService {
       let filteredServiceRequests = allServiceRequests;
       if (filters?.startDate || filters?.endDate) {
         filteredServiceRequests = allServiceRequests.filter((sr) => {
-          const srDate = new Date(sr.createdAt);
+          const srDate = sr.createdAt ? new Date(sr.createdAt) : new Date();
           if (filters.startDate && srDate < filters.startDate) return false;
           if (filters.endDate && srDate > filters.endDate) return false;
           return true;
@@ -443,7 +443,7 @@ export class PMSAnalyticsService {
         if (sr.resolvedAt) {
           const resolutionTime =
             (new Date(sr.resolvedAt).getTime() -
-              new Date(sr.createdAt).getTime()) /
+              (sr.createdAt ? new Date(sr.createdAt).getTime() : Date.now())) /
             (1000 * 60 * 60);
           totalResolutionTime += resolutionTime;
           resolvedCount++;
@@ -508,7 +508,7 @@ export class PMSAnalyticsService {
         } else if (rc.status === "draft" || rc.status === "scheduled") {
           // Check if overdue based on created date
           const daysSinceCreation =
-            (now.getTime() - new Date(rc.createdAt).getTime()) /
+            (now.getTime() - (rc.createdAt ? new Date(rc.createdAt).getTime() : Date.now())) /
             (1000 * 60 * 60 * 24);
           if (daysSinceCreation > 30) {
             // Assume 30 days SLA
@@ -582,7 +582,7 @@ export class PMSAnalyticsService {
       let filteredCases = allCases;
       if (filters?.startDate || filters?.endDate) {
         filteredCases = allCases.filter((rc) => {
-          const rcDate = new Date(rc.createdAt);
+          const rcDate = rc.createdAt ? new Date(rc.createdAt) : new Date();
           if (filters.startDate && rcDate < filters.startDate) return false;
           if (filters.endDate && rcDate > filters.endDate) return false;
           return true;
@@ -613,14 +613,14 @@ export class PMSAnalyticsService {
         if (rc.registeredAt) {
           const processingTime =
             (new Date(rc.registeredAt).getTime() -
-              new Date(rc.createdAt).getTime()) /
+              (rc.createdAt ? new Date(rc.createdAt).getTime() : Date.now())) /
             (1000 * 60 * 60 * 24); // days
           totalProcessingTime += processingTime;
           completedCount++;
         }
 
         // Monthly trends
-        const monthKey = new Date(rc.createdAt).toISOString().slice(0, 7); // YYYY-MM
+        const monthKey = rc.createdAt ? new Date(rc.createdAt).toISOString().slice(0, 7) : new Date().toISOString().slice(0, 7); // YYYY-MM
         if (!monthlyData[monthKey]) {
           monthlyData[monthKey] = { count: 0, byDeedType: {} };
         }
@@ -719,7 +719,7 @@ export class PMSAnalyticsService {
           // Check if SLA breached (simplified - assume 72 hours)
           if (sr.status === "new" || sr.status === "under_review") {
             const hoursSinceCreation =
-              (new Date().getTime() - new Date(sr.createdAt).getTime()) /
+              (new Date().getTime() - (sr.createdAt ? new Date(sr.createdAt).getTime() : Date.now())) /
               (1000 * 60 * 60);
             return hoursSinceCreation > 72;
           }

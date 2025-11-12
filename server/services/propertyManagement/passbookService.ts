@@ -109,7 +109,7 @@ export class PassbookService {
           doc.setFont("helvetica", "normal");
         }
 
-        const date = new Date(entry.createdAt).toLocaleDateString();
+        const date = entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '';
         const debit = entry.debit ? `₹${Number(entry.debit).toFixed(2)}` : "-";
         const credit = entry.credit ? `₹${Number(entry.credit).toFixed(2)}` : "-";
         const balance = `₹${Number(entry.balance).toFixed(2)}`;

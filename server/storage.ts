@@ -36,7 +36,7 @@ import {
   type Ownership, type InsertOwnership, type Application, type InsertApplication, type Allotment, type InsertAllotment,
   type Transfer, type InsertTransfer, type Mortgage, type InsertMortgage, type Modification, type InsertModification,
   type NOC, type InsertNOC, type ConveyanceDeed, type InsertConveyanceDeed,
-  type DemandNote, type InsertDemandNote, type PmsPayment, type InsertPayment, type Receipt, type InsertReceipt,
+  type DemandNote, type InsertDemandNote, type PmsPayment, type InsertPmsPayment, type Receipt, type InsertReceipt,
   type Refund, type InsertRefund, type Ledger, type InsertLedger,
   type RegistrationCase, type InsertRegistrationCase, type Deed, type InsertDeed,
   type Encumbrance, type InsertEncumbrance, type RegistrationSlot, type InsertRegistrationSlot,
@@ -2414,12 +2414,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Payment operations
-  async getPmsPayment(id: number): Promise<Payment | undefined> {
+  async getPmsPayment(id: number): Promise<PmsPayment | undefined> {
     const result = await db.select().from(pmsPayments).where(eq(pmsPayments.id, id)).limit(1);
     return result[0];
   }
 
-  async getPmsPayments(filters?: { propertyId?: number; partyId?: number; demandNoteId?: number; status?: string }): Promise<Payment[]> {
+  async getPmsPayments(filters?: { propertyId?: number; partyId?: number; demandNoteId?: number; status?: string }): Promise<PmsPayment[]> {
     let query = db.select().from(pmsPayments);
     const conditions = [];
     
@@ -2443,12 +2443,12 @@ export class DatabaseStorage implements IStorage {
     return await query.orderBy(desc(pmsPayments.createdAt));
   }
 
-  async createPmsPayment(payment: InsertPayment): Promise<Payment> {
+  async createPmsPayment(payment: InsertPmsPayment): Promise<PmsPayment> {
     const result = await db.insert(pmsPayments).values(payment).returning();
     return result[0];
   }
 
-  async updatePmsPayment(id: number, payment: Partial<InsertPayment>): Promise<Payment> {
+  async updatePmsPayment(id: number, payment: Partial<InsertPmsPayment>): Promise<PmsPayment> {
     const result = await db.update(pmsPayments)
       .set({ ...payment, updatedAt: new Date() })
       .where(eq(pmsPayments.id, id))

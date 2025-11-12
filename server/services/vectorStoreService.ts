@@ -65,7 +65,7 @@ export interface VectorStoreInfo {
 }
 
 export class VectorStoreService {
-  private defaultVectorStoreName = 'ABCBank-Documents';
+  private defaultVectorStoreName = 'PUDA-Documents';
   private vectorStoreExpiry = 30; // days
 
   async getOrCreateVectorStore(name?: string): Promise<VectorStoreInfo> {

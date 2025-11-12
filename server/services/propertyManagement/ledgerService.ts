@@ -96,7 +96,7 @@ export class LedgerService {
       ];
 
       const rows = ledgers.map((entry) => [
-        new Date(entry.createdAt).toLocaleDateString(),
+        entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '',
         entry.transactionType,
         entry.description || "",
         entry.debit || "0.00",
@@ -151,7 +151,7 @@ export class LedgerService {
           (acc) =>
             Math.abs(Number(acc.amount) - Number(payment.amount)) < 0.01 &&
             Math.abs(
-              new Date(acc.date).getTime() - new Date(payment.paidOn).getTime()
+              new Date(acc.date).getTime() - (payment.paidOn ? new Date(payment.paidOn).getTime() : 0)
             ) < 86400000 // Within 24 hours
         );
 
@@ -161,7 +161,7 @@ export class LedgerService {
           unmatched.push(payment);
           discrepancies.push({
             type: "missing" as const,
-            description: `Payment ${payment.refNo || payment.id} not found in accounts`,
+            description: `Payment ${payment.referenceNo || payment.id} not found in accounts`,
           });
         }
       }
@@ -172,7 +172,7 @@ export class LedgerService {
           (p) =>
             Math.abs(Number(account.amount) - Number(p.amount)) < 0.01 &&
             Math.abs(
-              new Date(account.date).getTime() - new Date(p.paidOn).getTime()
+              new Date(account.date).getTime() - (p.paidOn ? new Date(p.paidOn).getTime() : 0)
             ) < 86400000
         );
 

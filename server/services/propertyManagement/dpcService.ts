@@ -196,7 +196,7 @@ export class DpcService {
         resultJson: inspectionResult.resultJson,
         photos: inspectionResult.photos as any,
         remarks: inspectionResult.remarks,
-      });
+      } as Partial<InsertInspection>);
 
       const updated = await storage.updateDpcRequest(requestId, {
         status: "inspection_completed",
@@ -245,7 +245,7 @@ export class DpcService {
         qrCode: verifyUrl,
         issuedAt: new Date(),
         issuedBy: userId,
-      });
+      } as Partial<InsertDpcRequest>);
 
       return updated;
     } catch (error) {

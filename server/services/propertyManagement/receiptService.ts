@@ -135,7 +135,7 @@ export class ReceiptService {
 
     // Date
     doc.setFontSize(12);
-    const paidDate = new Date(payment.paidOn);
+    const paidDate = payment.paidOn ? new Date(payment.paidOn) : new Date();
     doc.text(
       `Date: ${paidDate.toLocaleDateString()}`,
       105,

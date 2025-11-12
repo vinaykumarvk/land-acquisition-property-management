@@ -220,7 +220,8 @@ export class CitizenService {
    */
   async searchProperty(refNo: string): Promise<Property | null> {
     try {
-      return await storage.getPropertyByParcelNo(refNo);
+      const property = await storage.getPropertyByParcelNo(refNo);
+      return property || null;
     } catch (error) {
       console.error("Error searching property:", error);
       return null;

@@ -10,6 +10,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use('/pdfs', express.static(path.join(process.cwd(), 'pdfs')));
+// Serve static assets from public directory (for logos, etc.)
+app.use('/assets', express.static(path.join(process.cwd(), 'client', 'public', 'assets')));
 
 // Session middleware
 app.use(session({

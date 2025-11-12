@@ -118,23 +118,8 @@ export class EncumbranceService {
     const year = new Date().getFullYear();
     const sequenceName = `ENC`;
     
-    // Get or create sequence
-    let sequence = await storage.getSequence(sequenceName);
-    if (!sequence || sequence.year !== year) {
-      if (sequence) {
-        await storage.updateSequence(sequence.id, { currentValue: 0, year });
-      } else {
-        sequence = await storage.createSequence({
-          sequenceName,
-          currentValue: 0,
-          year,
-        });
-      }
-    }
-
-    // Increment sequence
-    const newValue = sequence.currentValue + 1;
-    await storage.updateSequence(sequence.id, { currentValue: newValue });
+    // Use getNextSequenceValue which handles sequence creation/updates automatically
+    const newValue = await storage.getNextSequenceValue(sequenceName);
 
     return `${sequenceName}-${year}-${String(newValue).padStart(3, "0")}`;
   }
@@ -210,7 +195,16 @@ export class EncumbranceService {
       </html>
     `;
 
-    const pdfPath = await pdfService.generatePDF(html, `encumbrance_${certNo}.pdf`);
+    // TODO: Implement PDF generation from HTML
+    // For now, save HTML to a file path
+    const fs = require('fs');
+    const path = require('path');
+    const outputDir = process.env.PDF_OUTPUT_DIR || './pdfs';
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    const pdfPath = path.join(outputDir, `encumbrance_${certNo}.html`);
+    fs.writeFileSync(pdfPath, html);
     return pdfPath;
   }
 

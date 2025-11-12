@@ -22,9 +22,19 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. AI features are disabled.');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export interface DocumentAnalysis {
   documentType: string;
@@ -283,7 +293,8 @@ export class DocumentAnalysisService {
       
       try {
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        const response = await openai.chat.completions.create({
+        const client = getOpenAI();
+        const response = await client.chat.completions.create({
           model: "gpt-4o",
           messages: [
             {
@@ -313,7 +324,7 @@ export class DocumentAnalysisService {
     if (combinedSummary.length > 50000) {
       console.log('Final summarization needed...');
       try {
-        const finalResponse = await openai.chat.completions.create({
+        const finalResponse = await client.chat.completions.create({
           model: "gpt-4o",
           messages: [
             {

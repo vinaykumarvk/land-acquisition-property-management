@@ -1,14 +1,8 @@
-import { Switch, Route } from "wouter";
+import React from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
-import Dashboard from "@/pages/Dashboard";
-import NewInvestment from "@/pages/NewInvestment";
-import CashRequests from "@/pages/CashRequests";
-import MyTasks from "@/pages/MyTasks";
-import MyInvestments from "@/pages/MyInvestments";
-import Templates from "@/pages/Templates";
-import Reports from "@/pages/Reports";
 
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -82,6 +76,14 @@ function CitizenRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
+function RedirectToLams() {
+  const [, setLocation] = useLocation();
+  React.useEffect(() => {
+    setLocation("/lams");
+  }, [setLocation]);
+  return <div className="min-h-screen flex items-center justify-center">Redirecting...</div>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -105,35 +107,10 @@ function Router() {
       {/* Staff authentication */}
       <Route path="/login" component={Login} />
       
-      {/* Protected staff routes */}
+      {/* Protected staff routes - Default route redirects to LAMS */}
       <Route path="/">
         <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/new-investment">
-        <ProtectedRoute>
-          <NewInvestment />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/cash-requests">
-        <ProtectedRoute>
-          <CashRequests />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/my-tasks">
-        <ProtectedRoute>
-          <MyTasks />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/investments">
-        <ProtectedRoute>
-          <MyInvestments />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/templates">
-        <ProtectedRoute>
-          <Templates />
+          <RedirectToLams />
         </ProtectedRoute>
       </Route>
       <Route path="/lams">
@@ -164,11 +141,6 @@ function Router() {
       <Route path="/lams/possession">
         <ProtectedRoute>
           <LamsPossession />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/reports">
-        <ProtectedRoute>
-          <Reports />
         </ProtectedRoute>
       </Route>
 

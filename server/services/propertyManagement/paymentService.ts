@@ -4,15 +4,15 @@
  */
 
 import { storage } from "../../storage";
-import { InsertPayment, Payment, DemandNote } from "@shared/schema";
+import { InsertPmsPayment, PmsPayment, DemandNote } from "@shared/schema";
 
 export class PaymentService {
   /**
    * Process payment
    */
   async processPayment(
-    paymentData: InsertPayment
-  ): Promise<Payment> {
+    paymentData: InsertPmsPayment
+  ): Promise<PmsPayment> {
     try {
       // Validate party exists
       const party = await storage.getParty(paymentData.partyId);
@@ -40,7 +40,7 @@ export class PaymentService {
       // In production, this would integrate with payment gateway
       // For now, simulate successful payment
       await this.confirmPayment(payment.id, {
-        transactionId: paymentData.refNo || `TXN-${Date.now()}`,
+        transactionId: (paymentData as any).refNo || `TXN-${Date.now()}`,
         gateway: "mock",
       });
 
@@ -57,7 +57,7 @@ export class PaymentService {
   async confirmPayment(
     paymentId: number,
     gatewayResponse: any
-  ): Promise<Payment> {
+  ): Promise<PmsPayment> {
     try {
       const payment = await storage.getPmsPayment(paymentId);
       if (!payment) {
@@ -68,7 +68,7 @@ export class PaymentService {
       const updated = await storage.updatePmsPayment(paymentId, {
         status: "success",
         gatewayResponse,
-      });
+      } as Partial<InsertPmsPayment>);
 
       // Update demand note if linked
       if (payment.demandNoteId) {
@@ -83,7 +83,7 @@ export class PaymentService {
         paymentId,
         0,
         Number(payment.amount),
-        `Payment ${payment.refNo || paymentId}`
+        `Payment ${payment.refNo || paymentId.toString()}`
       );
 
       return updated;
@@ -156,7 +156,7 @@ export class PaymentService {
   /**
    * Get payment by ID
    */
-  async getPayment(id: number): Promise<Payment> {
+  async getPayment(id: number): Promise<PmsPayment> {
     try {
       const payment = await storage.getPmsPayment(id);
       if (!payment) {
@@ -177,7 +177,7 @@ export class PaymentService {
     partyId?: number;
     demandNoteId?: number;
     status?: string;
-  }): Promise<Payment[]> {
+  }): Promise<PmsPayment[]> {
     return await storage.getPmsPayments(filters);
   }
 
@@ -187,7 +187,7 @@ export class PaymentService {
   async refundPayment(
     paymentId: number,
     reason: string
-  ): Promise<Payment> {
+  ): Promise<PmsPayment> {
     try {
       const payment = await storage.getPmsPayment(paymentId);
       if (!payment) {

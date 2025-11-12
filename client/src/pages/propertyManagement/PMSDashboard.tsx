@@ -61,8 +61,8 @@ export default function PMSDashboard() {
       value: summary?.slaBreaches || 0,
       description: "Items requiring immediate attention",
       icon: AlertTriangle,
-      color: summary?.slaBreaches > 0 ? "text-red-600" : "text-gray-600",
-      bgColor: summary?.slaBreaches > 0 ? "bg-red-50" : "bg-gray-50",
+      color: summary?.slaBreaches > 0 ? "text-destructive" : "text-muted-foreground",
+      bgColor: summary?.slaBreaches > 0 ? "bg-destructive/10" : "bg-muted",
     },
   ];
 

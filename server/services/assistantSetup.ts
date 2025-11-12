@@ -1,16 +1,27 @@
 import OpenAI from 'openai';
 import { VectorStoreService } from './vectorStoreService';
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. AI features are disabled.');
+    }
+    openai = new OpenAI({ 
+      apiKey: process.env.OPENAI_API_KEY 
+    });
+  }
+  return openai;
+}
 
 const vectorStoreService = new VectorStoreService();
 
 export async function createOrGetAssistant(): Promise<string> {
   try {
+    const client = getOpenAI();
     // List existing assistants to find our document analyzer
-    const assistants = await openai.beta.assistants.list();
+    const assistants = await client.beta.assistants.list();
     
     // Look for existing assistant
     const existingAssistant = assistants.data.find(
@@ -27,7 +38,7 @@ export async function createOrGetAssistant(): Promise<string> {
     console.log(`Using vector store: ${vectorStore.id}`);
     
     // Create new assistant with proper vector store
-    const assistant = await openai.beta.assistants.create({
+    const assistant = await client.beta.assistants.create({
       name: 'Document Analysis Assistant',
       instructions: `You are an expert financial document analyst. Your role is to analyze documents uploaded to the vector store and provide detailed insights including:
 

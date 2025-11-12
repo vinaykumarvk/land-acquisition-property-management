@@ -55,25 +55,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { data: user } = useUser();
   const logout = useLogout();
 
-  const { data: taskCount = 0 } = useQuery<number>({
-    queryKey: ["/api/tasks/count"],
-    queryFn: async () => {
-      const response = await fetch("/api/tasks", { credentials: "include" });
-      const tasks = await response.json();
-      return tasks.filter((task: any) => task.status === 'pending').length;
-    },
-  });
 
-  // Dashboard navigation functions
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
-  const isDashboard = location === '/';
-  const showQuickActions = user && ['analyst', 'admin'].includes(user.role);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
@@ -103,27 +86,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/pms/reports", label: "Reports", icon: FileText, roles: ["all"] },
   ];
 
-  // Legacy/Investment Portal items (for backward compatibility)
-  const legacyNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
-    { href: "/", label: "Dashboard", icon: Home, roles: ["analyst", "manager", "committee_member", "finance", "admin"] },
-    { href: "/new-investment", label: "New Investment", icon: PlusCircle, roles: ["analyst", "admin"] },
-    { href: "/cash-requests", label: "Cash Requests", icon: DollarSign, roles: ["analyst", "admin"] },
-    { href: "/investments", label: "My Investments", icon: Briefcase, roles: ["analyst", "manager", "committee_member", "finance", "admin"] },
-    { href: "/templates", label: "Templates", icon: FileText, roles: ["analyst", "admin"] },
-  ];
-
-  // Common items
-  const commonNavigationItems: Array<{ href: string; label: string; icon: any; roles: string[]; badge?: number }> = [
-    { href: "/my-tasks", label: "My Tasks", icon: CheckSquare, badge: taskCount, roles: ["all"] },
-    { href: "/reports", label: "Reports", icon: BarChart3, roles: ["all"] },
-  ];
-
   // Combine all navigation items based on user role
   const allNavigationItems = [
     ...lamsNavigationItems,
     ...pmsNavigationItems,
-    ...legacyNavigationItems,
-    ...commonNavigationItems,
   ];
 
   // Filter navigation items based on user role
@@ -134,18 +100,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   });
 
   const filteredPmsItems = pmsNavigationItems.filter(item => {
-    if (item.roles.includes("all")) return true;
-    if (!user?.role) return false;
-    return item.roles.includes(user.role);
-  });
-
-  const filteredLegacyItems = legacyNavigationItems.filter(item => {
-    if (item.roles.includes("all")) return true;
-    if (!user?.role) return false;
-    return item.roles.includes(user.role);
-  });
-
-  const filteredCommonItems = commonNavigationItems.filter(item => {
     if (item.roles.includes("all")) return true;
     if (!user?.role) return false;
     return item.roles.includes(user.role);
@@ -191,12 +145,26 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Logo & Brand */}
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <BarChart3 className="h-6 w-6 text-white" />
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+            <img 
+              src="/assets/puda-logo.png?v=1" 
+              alt="PUDA Logo" 
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                // Fallback to icon if logo not found
+                console.error('Failed to load PUDA logo:', e);
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('svg')) {
+                  parent.innerHTML = '<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>';
+                }
+              }}
+            />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">ABCBank</h1>
-            <p className="text-sm text-muted-foreground">Investment Portal</p>
+            <h1 className="text-lg font-semibold">PUDA</h1>
+            <p className="text-sm text-muted-foreground">LAMS & PMS</p>
           </div>
         </div>
         <Button 
@@ -274,70 +242,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         )}
 
-        {/* Legacy/Investment Portal Section */}
-        {filteredLegacyItems.length > 0 && (
-          <div className="space-y-2">
-            <div className="px-4 py-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Investment Portal
-              </p>
-            </div>
-            {filteredLegacyItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location === item.href || location.startsWith(item.href + "/");
-              
-              return (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant={isActive ? "default" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <Icon className="mr-3 h-4 w-4" />
-                    {item.label}
-                    {item.badge && item.badge > 0 && (
-                      <Badge variant="secondary" className="ml-auto">
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Common Items Section */}
-        {filteredCommonItems.length > 0 && (
-          <div className="space-y-2">
-            <div className="px-4 py-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Common
-              </p>
-            </div>
-            {filteredCommonItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location === item.href || location.startsWith(item.href + "/");
-              
-              return (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant={isActive ? "default" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    <Icon className="mr-3 h-4 w-4" />
-                    {item.label}
-                    {item.badge && item.badge > 0 && (
-                      <Badge variant="secondary" className="ml-auto">
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-        
         <div className="my-4 border-t" />
         
         {/* Admin Section */}
@@ -431,12 +335,26 @@ export function AppLayout({ children }: AppLayoutProps) {
                     onClick={() => setIsSidebarOpen(true)}
                     className="flex items-center space-x-3 hover:bg-accent p-2 rounded-lg"
                   >
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-white" />
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+                      <img 
+                        src="/assets/puda-logo.png?v=1" 
+                        alt="PUDA Logo" 
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          // Fallback to icon if logo not found
+                          console.error('Failed to load PUDA logo:', e);
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('svg')) {
+                            parent.innerHTML = '<svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>';
+                          }
+                        }}
+                      />
                     </div>
                     <div className="text-left">
-                      <h1 className="text-lg font-semibold">ABCBank</h1>
-                      <p className="text-xs text-muted-foreground">Investment Portal</p>
+                      <h1 className="text-lg font-semibold">PUDA</h1>
+                      <p className="text-xs text-muted-foreground">LAMS & PMS Portal</p>
                     </div>
                   </Button>
                 )}
@@ -455,14 +373,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                 
                 <div className="flex items-center space-x-4">
                   <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                    {location === '/' ? 'Dashboard' : 
-                     location === '/new-investment' ? 'New Investment' :
-                     location === '/cash-requests' ? 'Cash Requests' :
-                     location === '/my-tasks' ? 'My Tasks' :
-                     location === '/investments' ? 'My Investments' :
-                     location.startsWith('/lams') ? 'LAMS' :
+                    {location.startsWith('/lams') ? 'LAMS' :
                      location.startsWith('/pms') ? 'Property Management' :
-                     'Investment Portal'}
+                     location.startsWith('/public') ? 'Public Portal' :
+                     location.startsWith('/citizen') ? 'Citizen Portal' :
+                     'PUDA Portal'}
                   </h2>
                   
                   {/* Module Tabs - Show when user has access to either module */}
@@ -498,72 +413,6 @@ export function AppLayout({ children }: AppLayoutProps) {
               </div>
               
               <div className="flex items-center space-x-4">
-                {/* Dashboard Navigation Icons - Only show on dashboard */}
-                {isDashboard && (
-                  <>
-                    <div className="hidden md:flex items-center space-x-2 px-4 py-2 bg-muted rounded-lg">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('overview')}
-                        title="Overview"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('proposal-summary')}
-                        title="Proposal Summary"
-                      >
-                        <Target className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('decision-support')}
-                        title="Decision Support"
-                      >
-                        <Shield className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('analytics')}
-                        title="Analytics"
-                      >
-                        <PieChart className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('proposals')}
-                        title="Proposals"
-                      >
-                        <Briefcase className="h-4 w-4" />
-                      </Button>
-                      {showQuickActions && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => scrollToSection('quick-actions')}
-                          title="Quick Actions"
-                        >
-                          <PlusCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => scrollToSection('tasks')}
-                        title="Tasks"
-                      >
-                        <Clock className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-
                 {/* Notifications */}
                 <NotificationDropdown />
                 

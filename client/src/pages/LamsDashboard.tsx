@@ -145,7 +145,8 @@ export default function LamsDashboard() {
               sias.slice(0, 5).map((sia) => (
                 <div
                   key={sia.id}
-                  className="flex items-center justify-between border rounded-md p-3"
+                  onClick={() => setLocation(`/lams/sia?id=${sia.id}`)}
+                  className="flex items-center justify-between border rounded-md p-3 cursor-pointer hover:bg-accent hover:border-primary transition-colors"
                 >
                   <div>
                     <p className="font-medium">{sia.title}</p>
@@ -171,7 +172,8 @@ export default function LamsDashboard() {
               notifications.slice(0, 5).map((notification) => (
                 <div
                   key={notification.id}
-                  className="flex items-center justify-between border rounded-md p-3"
+                  onClick={() => setLocation(`/lams/notifications?id=${notification.id}`)}
+                  className="flex items-center justify-between border rounded-md p-3 cursor-pointer hover:bg-accent hover:border-primary transition-colors"
                 >
                   <div>
                     <p className="font-medium">{notification.title}</p>

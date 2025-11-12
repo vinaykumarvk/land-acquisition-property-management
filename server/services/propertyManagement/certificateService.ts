@@ -204,7 +204,7 @@ export class CertificateService {
         resultJson: inspectionResult.resultJson,
         photos: inspectionResult.photos as any,
         remarks: inspectionResult.remarks,
-      });
+      } as Partial<InsertInspection>);
 
       const updated = await storage.updateOccupancyCertificate(certificateId, {
         status: "inspection_completed",
@@ -253,7 +253,7 @@ export class CertificateService {
         qrCode: verifyUrl,
         issuedAt: new Date(),
         issuedBy: userId,
-      });
+      } as Partial<InsertOccupancyCertificate>);
 
       return updated;
     } catch (error) {
@@ -449,7 +449,7 @@ export class CertificateService {
         resultJson: inspectionResult.resultJson,
         photos: inspectionResult.photos as any,
         remarks: inspectionResult.remarks,
-      });
+      } as Partial<InsertInspection>);
 
       const updated = await storage.updateCompletionCertificate(certificateId, {
         status: "inspection_completed",
@@ -498,7 +498,7 @@ export class CertificateService {
         qrCode: verifyUrl,
         issuedAt: new Date(),
         issuedBy: userId,
-      });
+      } as Partial<InsertCompletionCertificate>);
 
       return updated;
     } catch (error) {
