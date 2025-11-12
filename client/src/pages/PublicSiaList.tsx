@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,32 @@ export default function PublicSiaList() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header with clickable logo */}
+      <header className="bg-card shadow-sm border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/public" className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer w-fit">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+              <img 
+                src="/assets/puda-logo.png?v=1" 
+                alt="PUDA Logo" 
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('svg')) {
+                    parent.innerHTML = '<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>';
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">PUDA</h1>
+              <p className="text-sm text-muted-foreground">LAMS & PMS Portal</p>
+            </div>
+          </Link>
+        </div>
+      </header>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Social Impact Assessments</h1>
@@ -96,7 +122,7 @@ export default function PublicSiaList() {
         {!isLoading && !error && sias && sias.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {sias.map((sia) => (
-              <Card key={sia.id} className="hover:shadow-lg transition-shadow">
+              <Card key={sia.id} className="hover:shadow-lg transition-shadow flex flex-col h-full">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <CardTitle className="text-lg">{sia.title}</CardTitle>
@@ -106,12 +132,12 @@ export default function PublicSiaList() {
                     {sia.noticeNo}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-3">
+                <CardContent className="space-y-4 flex-1 flex flex-col">
+                  <p className="text-sm text-muted-foreground line-clamp-3 flex-shrink-0">
                     {sia.description}
                   </p>
 
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">{sia.location}</span>
@@ -124,13 +150,15 @@ export default function PublicSiaList() {
                     </div>
                   </div>
 
-                  <Button
-                    className="w-full"
-                    onClick={() => setLocation(`/public/sia/${sia.id}`)}
-                  >
-                    View Details
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <div className="mt-auto pt-2">
+                    <Button
+                      className="w-full"
+                      onClick={() => setLocation(`/public/sia/${sia.id}`)}
+                    >
+                      View Details
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

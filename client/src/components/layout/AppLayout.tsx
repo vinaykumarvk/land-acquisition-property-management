@@ -42,15 +42,34 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    // Initialize from localStorage, default to false
+    // Initialize from localStorage, default to true on larger screens
     const saved = localStorage.getItem('sidebarOpen');
-    return saved ? JSON.parse(saved) : false;
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    // Default to true on larger screens (>= 1024px)
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
   });
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Save sidebar state to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
+
+  // Handle window resize to auto-open sidebar on larger screens
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && !isSidebarOpen) {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isSidebarOpen]);
   const { data: user } = useUser();
   const logout = useLogout();
@@ -117,16 +136,18 @@ export function AppLayout({ children }: AppLayoutProps) {
     logout.mutate();
   };
 
-  // Handle ESC key and click outside to close sidebar
+  // Handle ESC key and click outside to close sidebar (only on mobile)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isSidebarOpen) {
+      // Only close on mobile screens (when sidebar is overlay)
+      if (event.key === 'Escape' && isSidebarOpen && window.innerWidth < 1024) {
         setIsSidebarOpen(false);
       }
     };
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (isSidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+      // Only close on mobile screens (when sidebar is overlay)
+      if (isSidebarOpen && window.innerWidth < 1024 && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
         setIsSidebarOpen(false);
       }
     };
@@ -144,7 +165,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="flex flex-col h-full">
       {/* Logo & Brand */}
       <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center space-x-3">
+        <Link href={user?.role === 'citizen' ? '/citizen/dashboard' : location.startsWith('/lams') ? '/lams' : location.startsWith('/pms') ? '/pms' : '/public'} className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
             <img 
               src="/assets/puda-logo.png?v=1" 
@@ -166,11 +187,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             <h1 className="text-lg font-semibold">PUDA</h1>
             <p className="text-sm text-muted-foreground">LAMS & PMS</p>
           </div>
-        </div>
+        </Link>
         <Button 
           variant="ghost" 
           size="icon"
           onClick={() => setIsSidebarOpen(false)}
+          className="lg:hidden"
         >
           <Menu className="h-4 w-4" />
         </Button>
@@ -309,67 +331,45 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="flex h-screen bg-background animate-fade-in">
-      {/* Sidebar Overlay - Slides from left */}
+      {/* Sidebar - Fixed on large screens, overlay on mobile */}
+      <div 
+        ref={sidebarRef}
+        className={`
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+          fixed lg:static
+          left-0 top-0 h-full w-72 bg-card shadow-xl z-40
+          transition-transform duration-300 ease-in-out
+          lg:shadow-none
+        `}
+      >
+        <SidebarContent />
+      </div>
+
+      {/* Sidebar overlay backdrop - only on mobile */}
       {isSidebarOpen && (
         <div 
-          ref={sidebarRef}
-          className="fixed left-0 top-0 h-full w-72 bg-card shadow-xl z-40 animate-slide-in-left"
-        >
-          <SidebarContent />
-        </div>
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
       )}
 
       {/* Main Content - Dynamically adjusts when sidebar is open */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
-        isSidebarOpen ? 'ml-72' : 'ml-0'
-      }`}>
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Top Bar */}
         <header className="bg-card shadow-sm border-b border-border animate-slide-up">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                {/* Clickable Logo to open sidebar - hidden when sidebar is open */}
-                {!isSidebarOpen && (
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="flex items-center space-x-3 hover:bg-accent p-2 rounded-lg"
-                  >
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
-                      <img 
-                        src="/assets/puda-logo.png?v=1" 
-                        alt="PUDA Logo" 
-                        className="h-full w-full object-contain"
-                        onError={(e) => {
-                          // Fallback to icon if logo not found
-                          console.error('Failed to load PUDA logo:', e);
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent && !parent.querySelector('svg')) {
-                            parent.innerHTML = '<svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>';
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="text-left">
-                      <h1 className="text-lg font-semibold">PUDA</h1>
-                      <p className="text-xs text-muted-foreground">LAMS & PMS Portal</p>
-                    </div>
-                  </Button>
-                )}
-                
-                {/* Simple menu button when sidebar is open */}
-                {isSidebarOpen && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="hover:bg-accent"
-                  >
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                )}
+                {/* Menu button - visible on mobile, hidden on large screens when sidebar is visible */}
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="hover:bg-accent lg:hidden"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
                 
                 <div className="flex items-center space-x-4">
                   <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">

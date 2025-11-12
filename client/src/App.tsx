@@ -41,6 +41,15 @@ import PMSReports from "@/pages/propertyManagement/PMSReports";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading, error } = useUser();
+  const [, setLocation] = useLocation();
+
+  // Block citizens from accessing staff routes - redirect them to citizen dashboard
+  React.useEffect(() => {
+    if (user && user.role === 'citizen') {
+      console.log("Citizen attempting to access staff route, redirecting to citizen dashboard");
+      setLocation("/citizen/dashboard");
+    }
+  }, [user, setLocation]);
 
   console.log("ProtectedRoute state:", { user, isLoading, error });
 
@@ -56,6 +65,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     console.log("No user, showing login");
     return <Login />;
+  }
+
+  // Show redirecting message if citizen
+  if (user.role === 'citizen') {
+    return <div className="min-h-screen flex items-center justify-center">Redirecting...</div>;
   }
 
   console.log("User authenticated, showing app layout");

@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile, UploadedFile } from "@/lib/fileUpload";
+import { useUser } from "@/lib/auth";
 
 interface Sia {
   id: number;
@@ -36,6 +37,11 @@ interface SiaDetails extends Sia {
 export default function LamsSia() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: user } = useUser();
+  
+  // Defense in depth: Hide edit forms if user is a citizen
+  const isCitizen = user?.role === 'citizen';
+  
   const { data: sias, isLoading } = useQuery<Sia[]>({
     queryKey: ["/api/lams/sia"],
     queryFn: async () => {
@@ -225,12 +231,13 @@ export default function LamsSia() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Draft New Social Impact Assessment</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+      {!isCitizen && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Draft New Social Impact Assessment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Title *</label>
               <Input
@@ -282,8 +289,10 @@ export default function LamsSia() {
           </form>
         </CardContent>
       </Card>
+      )}
 
-      <Card>
+      {!isCitizen && (
+        <Card>
         <CardHeader>
           <CardTitle>Hearing Management</CardTitle>
         </CardHeader>
@@ -425,6 +434,7 @@ export default function LamsSia() {
           )}
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -442,34 +452,36 @@ export default function LamsSia() {
                   <Badge className="w-fit">{sia.status.replace(/_/g, " ")}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{sia.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {sia.status === "draft" && (
-                    <Button
-                      size="sm"
-                      onClick={() => transitionMutation.mutate({ id: sia.id, action: "publish" })}
-                    >
-                      Publish
-                    </Button>
-                  )}
-                  {sia.status === "hearing_completed" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => transitionMutation.mutate({ id: sia.id, action: "report" })}
-                    >
-                      Generate Report
-                    </Button>
-                  )}
-                  {sia.status === "report_generated" && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => transitionMutation.mutate({ id: sia.id, action: "close" })}
-                    >
-                      Close SIA
-                    </Button>
-                  )}
-                </div>
+                {!isCitizen && (
+                  <div className="flex flex-wrap gap-2">
+                    {sia.status === "draft" && (
+                      <Button
+                        size="sm"
+                        onClick={() => transitionMutation.mutate({ id: sia.id, action: "publish" })}
+                      >
+                        Publish
+                      </Button>
+                    )}
+                    {sia.status === "hearing_completed" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => transitionMutation.mutate({ id: sia.id, action: "report" })}
+                      >
+                        Generate Report
+                      </Button>
+                    )}
+                    {sia.status === "report_generated" && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => transitionMutation.mutate({ id: sia.id, action: "close" })}
+                      >
+                        Close SIA
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           ) : (

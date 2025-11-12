@@ -2052,8 +2052,24 @@ Note: This is an AI-generated analysis based on the selected template structure.
   app.post('/api/lams/sia/:id/feedback', async (req, res) => {
     try {
       // Public endpoint - no auth required for citizen feedback
-      const feedback = await siaService.submitFeedback(parseInt(req.params.id), req.body);
-      res.json(feedback);
+      // Map frontend fields to backend schema
+      const { name, phone, email, feedback } = req.body;
+      
+      if (!name || !phone || !feedback) {
+        return res.status(400).json({ message: 'Name, phone, and feedback are required' });
+      }
+      
+      // Combine phone and email for citizenContact (prefer phone, add email if provided)
+      const citizenContact = email ? `${phone}, ${email}` : phone;
+      
+      const feedbackData = {
+        citizenName: name,
+        citizenContact: citizenContact,
+        text: feedback,
+      };
+      
+      const feedbackResult = await siaService.submitFeedback(parseInt(req.params.id), feedbackData);
+      res.json(feedbackResult);
     } catch (error) {
       res.status(400).json({ message: error instanceof Error ? error.message : 'Error submitting feedback' });
     }

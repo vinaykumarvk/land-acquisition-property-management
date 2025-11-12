@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLogin } from "@/lib/auth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +42,7 @@ export default function Login() {
     <div className="min-h-screen bg-background gradient-bg flex items-center justify-center p-4 animate-fade-in">
       <Card className="w-full max-w-md card-shadow-lg glass-effect animate-scale-in">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
+          <Link href="/public" className="flex flex-col items-center mb-4 hover:opacity-80 transition-opacity cursor-pointer">
             <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center card-shadow overflow-hidden">
               <img 
                 src="/assets/puda-logo.png?v=1" 
@@ -60,9 +60,9 @@ export default function Login() {
                 }}
               />
             </div>
-          </div>
-          <CardTitle className="text-2xl text-gradient">Welcome to PUDA</CardTitle>
-          <p className="text-muted-foreground">LAMS & PMS Portal</p>
+            <CardTitle className="text-2xl text-gradient mt-2">Welcome to PUDA</CardTitle>
+            <p className="text-muted-foreground">LAMS & PMS Portal</p>
+          </Link>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

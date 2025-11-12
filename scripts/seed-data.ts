@@ -1901,11 +1901,16 @@ async function seedPMS(userMap: Map<string, number>): Promise<void> {
         
         if (!existing) {
           const partyId = partyIds[i % partyIds.length];
+          // Create a valid issue date
+          const month = Math.floor(i / 3) + 1;
+          const day = (i % 28) + 1;
+          const issueDate = new Date(2024, month - 1, day);
+          
           await db.insert(allotments).values({
             propertyId: propertyIds[i],
             partyId,
             letterNo: `ALLOT-${String(i + 1).padStart(4, '0')}`,
-            issueDate: new Date(`2024-0${Math.floor(i / 3) + 1}-${(i % 28) + 1}`),
+            issueDate: issueDate,
             status,
             createdBy: estateOfficerId,
           }).catch(() => {});
@@ -1947,7 +1952,11 @@ async function seedPMS(userMap: Map<string, number>): Promise<void> {
               penalties: '0.00',
             },
             amount,
-            dueDate: new Date(`2024-${String(Math.floor(i / 3) + 6).padStart(2, '0')}-${(i % 28) + 1}`),
+            dueDate: (() => {
+              const month = Math.floor(i / 3) + 6;
+              const day = (i % 28) + 1;
+              return new Date(2024, month - 1, day);
+            })(),
             status,
             createdBy: accountsOfficerId,
           }).catch(() => {});
@@ -1978,10 +1987,6 @@ async function seedPMS(userMap: Map<string, number>): Promise<void> {
         
         if (!existing) {
           const partyId = partyIds[i % partyIds.length];
-          // Create some older requests for overdue calculation
-          const createdAt = status === 'new' || status === 'under_review' 
-            ? new Date(Date.now() - (i % 3 === 0 ? 4 * 24 * 60 * 60 * 1000 : 1 * 24 * 60 * 60 * 1000)) // Some 4 days old (overdue), some 1 day old
-            : new Date();
           
           const values: any = {
             propertyId: propertyIds[i],
@@ -1993,11 +1998,22 @@ async function seedPMS(userMap: Map<string, number>): Promise<void> {
             assignedTo: estateOfficerId,
           };
           // Add createdAt if the field exists and we want to set it for overdue calculation
-          if (status === 'new' || status === 'under_review') {
-            const daysAgo = i % 3 === 0 ? 4 : 1; // Some 4 days old (overdue), some 1 day old
-            values.createdAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+          // Note: createdAt might be auto-generated, so we only set it if needed for overdue calculation
+          try {
+            if (status === 'new' || status === 'under_review') {
+              const daysAgo = i % 3 === 0 ? 4 : 1; // Some 4 days old (overdue), some 1 day old
+              const pastDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+              if (!isNaN(pastDate.getTime())) {
+                values.createdAt = pastDate;
+              }
+            }
+          } catch (e) {
+            // If createdAt can't be set, continue without it
           }
-          await db.insert(serviceRequests).values(values).catch(() => {});
+          await db.insert(serviceRequests).values(values).catch((err) => {
+            // Log error but continue - might be schema issue
+            if (i < 3) console.log(`  ⚠ Skipped service request ${i + 1} due to error`);
+          });
           if (i < 5) console.log(`  ✓ Created service request ${i + 1} (${status})`);
         }
       }

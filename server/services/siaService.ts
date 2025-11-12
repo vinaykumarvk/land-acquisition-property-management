@@ -165,8 +165,19 @@ export class SiaService {
 
       // Validate feedback window
       const now = new Date();
-      if (now < new Date(existingSia.startDate) || now > new Date(existingSia.endDate)) {
-        throw new Error('Feedback submission is outside the allowed time window');
+      const startDate = new Date(existingSia.startDate);
+      const endDate = new Date(existingSia.endDate);
+      
+      // Set endDate to end of day (23:59:59.999) to allow submissions throughout the entire day
+      endDate.setHours(23, 59, 59, 999);
+      
+      // Set startDate to start of day (00:00:00.000) to allow submissions from the beginning of the day
+      startDate.setHours(0, 0, 0, 0);
+      
+      if (now < startDate || now > endDate) {
+        const startDateStr = startDate.toLocaleDateString('en-IN');
+        const endDateStr = endDate.toLocaleDateString('en-IN');
+        throw new Error(`Feedback submission is outside the allowed time window. Feedback window: ${startDateStr} to ${endDateStr}`);
       }
 
       // Create feedback

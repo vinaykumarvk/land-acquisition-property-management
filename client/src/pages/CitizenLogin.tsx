@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,8 +176,35 @@ export default function CitizenLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-background gradient-bg flex items-center justify-center p-4 animate-fade-in">
-      <Card className="w-full max-w-md card-shadow-lg glass-effect animate-scale-in">
+    <div className="min-h-screen bg-background gradient-bg flex flex-col animate-fade-in">
+      {/* Header with clickable logo */}
+      <header className="bg-card shadow-sm border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/public" className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer w-fit">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+              <img 
+                src="/assets/puda-logo.png?v=1" 
+                alt="PUDA Logo" 
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('svg')) {
+                    parent.innerHTML = '<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>';
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">PUDA</h1>
+              <p className="text-sm text-muted-foreground">LAMS & PMS Portal</p>
+            </div>
+          </Link>
+        </div>
+      </header>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md card-shadow-lg glass-effect animate-scale-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center card-shadow">
@@ -367,6 +394,7 @@ export default function CitizenLogin() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
